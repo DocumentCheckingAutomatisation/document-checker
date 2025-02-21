@@ -38,6 +38,7 @@ class SettingsManager(AbstractLogic):
             return True
 
         except Exception as ex:
+            print(f"Ошибка загрузки: {ex}")
             self.__settings = self.__default_settings()
             self.set_exception(ex)
             return False
@@ -47,8 +48,8 @@ class SettingsManager(AbstractLogic):
             if hasattr(self.__settings, key):
                 setattr(self.__settings, key, value)
 
-        if self.__settings.report_settings is None:
-            self.__settings.report_settings = {}
+        # if self.__settings.report_settings is None:
+        #     self.__settings.report_settings = {}
 
     @property
     def current_settings(self) -> SettingsModel:
