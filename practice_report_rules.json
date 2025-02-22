@@ -79,7 +79,7 @@
   },
   "design_rules": {
     "title":{
-      "doc_type": "Курсовая работа"
+      "doc_type": "Отчет по практике"
     },
     "chapter": {
       "font_size": 14,
