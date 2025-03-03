@@ -1,21 +1,40 @@
-from abc import ABC, abstractmethod
 import uuid
+from abc import ABC, abstractmethod
 
 from src.core.validator import Validator
 
 
 class AbstractModel(ABC):
-    def __init__(self, name=None, id=None):
-        self.name = name or ""
-        self.id = id or str(uuid.uuid4())  # Уникальный идентификатор
+    __id: str = ""
+    __name: str = ""
+
+    def __init__(self):
+        self.__id: str = str(uuid.uuid4())  # Уникальный идентификатор
+
+    @property
+    def id(self) -> str:
+        """Уникальный идентификатор"""
+        return self.__id
+
+    @property
+    def name(self) -> str:
+        """Наименование"""
+        return self.__name
+
+    @name.setter
+    def name(self, value: str):
+        """Наименование"""
+        Validator.validate(value, str, 255)
+        self.__name = value.strip()
 
     @abstractmethod
     def to_dict(self):
         """Метод для представления объекта в виде словаря"""
         pass
 
-    def from_json(self, data: dict):
-        self.id = data.get("id", str(uuid.uuid4()))
+    @abstractmethod
+    def from_dict(self, data: dict):
+        """Метод для создания объекта из словаря"""
         self.name = data.get("name", "")
 
     def __eq__(self, other):

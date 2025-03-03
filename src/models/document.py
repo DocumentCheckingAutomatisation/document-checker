@@ -1,26 +1,50 @@
-from src. core.abstract_model import AbstractModel
+from src.core.abstract_model import AbstractModel
 from src.core.doc_type import DocType
+from src.core.validator import Validator
 from src.models.validation_result import ValidationResult
 
+
 class Document(AbstractModel):
-    def __init__(self, name=None, id=None, doc_type=None, result=None):
-        super().__init__(name, id)
-        self.doc_type: DocType = doc_type or DocType()
-        self.result: ValidationResult = result or ValidationResult()
+    """Модель документа"""
+    __doc_type: DocType = None
+    __result: ValidationResult = None
+
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def doc_type(self):
+        return self.__doc_type
+
+    @doc_type.setter
+    def doc_type(self, value):
+        Validator.validate(value, DocType)
+        self.__doc_type = value
+
+    @property
+    def result(self):
+        return self.__result
+
+    @result.setter
+    def result(self, value):
+        Validator.validate(value, ValidationResult)
+        self.__result = value
 
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
-            "doc_type": self.doc_type.to_dict(),
+            "doc_type": self.doc_type.name if self.doc_type else None,
             "result": self.result.to_dict(),
         }
 
-    def from_json(self, data: dict):
-        super().from_json(data)
+    def from_dict(self, data: dict):
+        super().from_dict(data)
 
-        self.doc_type = DocType().from_json(data.get("doc_type", {}))
-        self.result = ValidationResult().from_json(data.get("result", {}))
+        self.doc_type = DocType[data.get("doc_type")] if data.get("doc_type") else None
+
+        self.result = ValidationResult()
+        self.result.from_dict(data.get("result", {}))
 
     def __eq__(self, other):
         return super().__eq__(other) and self.doc_type == other.doc_type and self.result == other.result
