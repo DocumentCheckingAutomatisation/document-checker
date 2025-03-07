@@ -23,11 +23,11 @@ class Logging(AbstractLogic):
     def set_exception(self, ex: Exception):  # pragma: no cover
         super().set_exception(ex)
 
-    def handle_event(self, type: EventType, params):
-        super().handle_event(type, params)
+    def handle_event(self, event_type: EventType, params):
+        super().handle_event(event_type, params)
 
-        if type in {EventType.LOG_INFO, EventType.LOG_ERROR, EventType.LOG_DEBUG}:
-            self._log_event(type, params)
+        if event_type in {EventType.LOG_INFO, EventType.LOG_ERROR, EventType.LOG_DEBUG}:
+            self._log_event(event_type, params)
 
     def _log_event(self, type: EventType, params):
         """

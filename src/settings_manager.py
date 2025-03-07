@@ -86,8 +86,8 @@ class SettingsManager(AbstractLogic):
     def set_exception(self, ex: Exception):
         self._inner_set_exception(ex)
 
-    def handle_event(self, type: EventType, params):
-        super().handle_event(type, params)
+    def handle_event(self, event_type: EventType, params):
+        super().handle_event(event_type, params)
 
         # if type == EventType.CHANGE_BLOCK_PERIOD:
         #     self.save_settings()

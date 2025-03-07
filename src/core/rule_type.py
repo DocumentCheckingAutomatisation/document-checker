@@ -13,6 +13,8 @@ class RuleType(Enum):
     TABLE = 7
     LIST = 8
     FORMULA = 9
+    CITATIONS = 10
+    QUOTES = 11
 
 
 

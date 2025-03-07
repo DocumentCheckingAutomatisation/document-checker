@@ -30,6 +30,6 @@ class AbstractLogic(ABC):
         pass
 
     @abstractmethod
-    def handle_event(self, type: EventType, params):
+    def handle_event(self, event_type: EventType, params):
         """Обработка"""
-        Validator.validate(type, EventType)
+        Validator.validate(event_type, EventType)
