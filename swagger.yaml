@@ -1,0 +1,111 @@
+swagger: '2.0'
+info:
+  description: Набор сервисов для работы с системой автоматического нормоконтроля
+  version: "1.0.0"
+  title: RestAPI
+consumes:
+  - application/json
+  - application/text
+produces:
+  - application/json
+  - application/text
+basePath: "/api"
+
+paths:
+  /documents/options:
+    get:
+      summary: Получить cписок доступных типов документов для проверки
+      operationId: main.docs_for_validation_options
+      produces:
+        - application/json
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                value:
+                  type: string
+        500:
+          description: Ошибка на сервере
+        default:
+          description: Неизвестная ошибка
+  /rules/options:
+    get:
+      summary: Получить список доступных типов правил проверки
+      operationId: main.rules_options
+      responses:
+        200:
+          description: Список доступных типов правил
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                value:
+                  type: string
+        500:
+          description: Ошибка на сервере
+  /rules/{doc_type}:
+    get:
+      summary: Получить список правил для указанного типа документа
+      operationId: main.exact_rules
+      parameters:
+        - name: doc_type
+          in: path
+          required: true
+          type: string
+          description: Тип документа (например, "diploma", "course_work", "practice_report")
+      responses:
+        200:
+          description: Список правил для указанного типа документа
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                rule_name:
+                  type: string
+                value:
+                  type: string
+        400:
+          description: Некорректный тип документа
+        500:
+          description: Ошибка на сервере
+  /rules/update:
+    post:
+      summary: Обновить значение конкретного правила для указанного типа документа
+      operationId: main.change_rules
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - doc_type
+              - rule_key
+              - new_value
+            properties:
+              doc_type:
+                type: string
+                description: Тип документа (например, "diploma", "course_work", "practice_report")
+              rule_key:
+                type: string
+                description: Ключ изменяемого правила
+              new_value:
+                type: string
+                description: Новое значение правила
+      responses:
+        200:
+          description: Правило успешно обновлено
+        400:
+          description: Ошибка в переданных данных
+        500:
+          description: Ошибка при обновлении правила

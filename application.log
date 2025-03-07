@@ -1,0 +1,94 @@
+2025-03-06 15:10:01 [LOG_INFO] Запуск FastAPI
+2025-03-06 15:11:40 [LOG_INFO] Запуск FastAPI
+2025-03-06 15:12:31 [LOG_DEBUG] Запрос: /api/documents/options [GET]
+2025-03-06 15:12:31 [LOG_INFO] Список доступных типов документов для проверки возвращен
+2025-03-06 15:24:20 [LOG_INFO] Запуск FastAPI
+2025-03-06 15:24:26 [LOG_DEBUG] Запрос: /api/documents/options [GET]
+2025-03-06 15:24:26 [LOG_INFO] Список доступных типов документов для проверки возвращен
+2025-03-06 15:24:41 [LOG_DEBUG] Запрос: /api/rules/options [GET]
+2025-03-06 15:24:41 [LOG_INFO] Список доступных типов правил проверки возвращен
+2025-03-06 15:26:37 [LOG_INFO] Запуск FastAPI
+2025-03-06 15:30:25 [LOG_INFO] Запуск FastAPI
+2025-03-06 15:30:34 [LOG_DEBUG] Запрос: /api/rules/options [GET]
+2025-03-06 15:30:34 [LOG_INFO] Список доступных типов правил проверки возвращен
+2025-03-06 15:30:45 [LOG_DEBUG] Запрос: /api/rules/options [GET]
+2025-03-06 15:30:45 [LOG_INFO] Список доступных типов правил проверки возвращен
+2025-03-06 15:39:47 [LOG_DEBUG] Запрос правил для типа документа: diploma [GET]
+2025-03-06 15:39:47 [LOG_INFO] Правила для diploma возвращены
+2025-03-06 15:40:37 [LOG_DEBUG] Запрос правил для типа документа: diploma [GET]
+2025-03-06 15:40:37 [LOG_INFO] Правила для diploma возвращены
+2025-03-06 15:40:51 [LOG_DEBUG] Запрос правил для типа документа: course [GET]
+2025-03-06 15:40:55 [LOG_DEBUG] Запрос правил для типа документа: cource [GET]
+2025-03-06 15:41:09 [LOG_DEBUG] Запрос правил для типа документа: course [GET]
+2025-03-06 15:43:57 [LOG_DEBUG] Запрос правил для типа документа: course_work [GET]
+2025-03-06 15:43:57 [LOG_INFO] Правила для course_work возвращены
+2025-03-06 15:44:18 [LOG_DEBUG] Запрос правил для типа документа: course_work [GET]
+2025-03-06 15:44:18 [LOG_INFO] Правила для course_work возвращены
+2025-03-06 15:44:30 [LOG_DEBUG] Запрос правил для типа документа: practice_report [GET]
+2025-03-06 15:44:30 [LOG_INFO] Правила для practice_report возвращены
+2025-03-06 16:03:07 [LOG_INFO] Запуск FastAPI
+2025-03-06 16:03:14 [LOG_DEBUG] Запрос правил для типа документа: practice_report [GET]
+2025-03-06 16:03:14 [LOG_INFO] Правила для practice_report возвращены
+2025-03-06 16:46:56 [LOG_INFO] Запуск FastAPI
+2025-03-06 16:55:14 [LOG_INFO] Запуск FastAPI
+2025-03-06 16:56:11 [LOG_INFO] Правило common_rules.margins.top для diploma изменено на 100
+2025-03-06 16:56:26 [LOG_DEBUG] Запрос правил для типа документа: diploma [GET]
+2025-03-06 16:56:26 [LOG_INFO] Правила для diploma возвращены
+2025-03-06 17:00:21 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:08:45 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:09:36 [LOG_INFO] Правило common_rules.margins.top для diploma изменено на 25
+2025-03-06 17:29:30 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:43:52 [LOG_INFO] Правило structure_rules.required_chapters для diploma изменено на ["Содержание","Введение","1","2","Заключение","Список использованных источников","Приложение"]
+2025-03-06 17:44:54 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:44:56 [LOG_INFO] Правило structure_rules.required_chapters для diploma изменено на ["Титульный лист","Содержание","Введение","1","2","Заключение","Список использованных источников","Приложение"]
+2025-03-06 17:45:29 [LOG_INFO] Правило structure_rules.required_chapters для diploma изменено на ["Титульный лист","Содержание","Введение","1","2","Заключение","Список использованных источников","Приложение"]
+2025-03-06 17:45:43 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:45:45 [LOG_INFO] Правило structure_rules.required_chapters для diploma изменено на ["Титульный лист","Содержание","Введение","1","2","Заключение","Список использованных источников","Приложение"]
+2025-03-06 17:46:02 [LOG_INFO] Правило structure_rules.required_chapters для diploma изменено на ["Титульный лист","Содержание","Введение","1","2","Заключение","Список использованных источников","Приложение"]
+2025-03-06 17:46:41 [LOG_INFO] Правило structure_rules.required_chapters для diploma изменено на ["Титульный лист","Содержание","Введение","1","2","Заключение","Список использованных источников","Приложение"]
+2025-03-06 17:52:39 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:56:09 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:56:55 [LOG_INFO] Запуск FastAPI
+2025-03-06 17:56:57 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на false
+2025-03-06 17:57:20 [LOG_INFO] Правило design_rules.chapter.font_size для diploma изменено на 16
+2025-03-06 17:57:32 [LOG_INFO] Правило design_rules.chapter.font_size для diploma изменено на 14
+2025-03-06 17:57:39 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на 14
+2025-03-06 17:57:52 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на 14
+2025-03-06 17:58:07 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на true
+2025-03-06 19:52:11 [LOG_INFO] Запуск FastAPI
+2025-03-06 19:52:25 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на false
+2025-03-06 19:52:42 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на хавих
+2025-03-06 19:52:52 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на true
+2025-03-06 19:52:59 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на 14
+2025-03-06 19:53:11 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на true
+2025-03-06 19:57:09 [LOG_INFO] Запуск FastAPI
+2025-03-06 19:57:21 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на false
+2025-03-06 19:57:45 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на True
+2025-03-06 19:58:27 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на fals
+2025-03-06 19:58:40 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на tru
+2025-03-06 19:58:51 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на true
+2025-03-06 20:00:18 [LOG_INFO] Запуск FastAPI
+2025-03-06 20:00:22 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на true
+2025-03-06 20:00:33 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на false
+2025-03-06 20:00:41 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на 14
+2025-03-06 20:00:48 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на true
+2025-03-06 20:00:51 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на str
+2025-03-06 20:00:58 [LOG_INFO] Правило design_rules.chapter.bold для diploma изменено на true
+2025-03-06 20:05:26 [LOG_INFO] Запуск FastAPI
+2025-03-06 20:05:51 [LOG_INFO] Правило common_rules.margins.top для diploma изменено на 25
+2025-03-06 20:11:14 [LOG_INFO] Запуск FastAPI
+2025-03-06 20:14:38 [LOG_INFO] Запуск FastAPI
+2025-03-06 20:16:13 [LOG_DEBUG] Запрос правил для типа документа: diploma [GET]
+2025-03-06 20:16:13 [LOG_INFO] Правила для diploma возвращены
+2025-03-06 20:35:35 [LOG_INFO] Запуск FastAPI
+2025-03-06 20:37:32 [LOG_DEBUG] Запрос правил для типа документа: diploma [GET]
+2025-03-06 20:37:32 [LOG_INFO] Правила для diploma возвращены
+2025-03-06 20:37:33 [LOG_DEBUG] Запрос правил для типа документа: diploma [GET]
+2025-03-06 20:37:33 [LOG_INFO] Правила для diploma возвращены
+2025-03-06 20:37:53 [LOG_INFO] Правило design_rules.chapter.font_size для diploma изменено на 14
+2025-03-06 20:52:10 [LOG_INFO] Запуск FastAPI
+2025-03-06 20:53:43 [LOG_DEBUG] Запрос правил для типа документа: diploma [GET]
+2025-03-06 20:53:43 [LOG_INFO] Правила для diploma возвращены
+2025-03-06 20:53:48 [LOG_DEBUG] Запрос правил для типа документа: course_work [GET]
+2025-03-06 20:53:48 [LOG_INFO] Правила для course_work возвращены
+2025-03-06 20:59:35 [LOG_INFO] Запуск FastAPI
