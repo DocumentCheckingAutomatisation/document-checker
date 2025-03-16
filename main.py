@@ -1,3 +1,5 @@
+import json
+
 import connexion
 from flask import Response
 from flask import request
@@ -6,6 +8,7 @@ from src.core.doc_type import DocType
 from src.core.event_type import EventType
 from src.core.validator import OperationException
 from src.logics.doc_service import DocService
+from src.logics.document_validator import DocumentValidator
 from src.logics.logging import Logging
 from src.logics.observe_service import ObserveService
 from src.logics.rule_service import RuleService
@@ -73,6 +76,36 @@ def change_rules():
         return Response(f"Ошибка: {str(e)}", status=400)
     except Exception as e:
         return Response(f"Внутренняя ошибка сервера: {str(e)}", status=500)
+
+@app.route("/api/documents/validate", methods=["POST"])
+def validate_document():
+    data = request.get_json()
+    if not data or "document" not in data:
+        return Response("Отсутствует документ в запросе", status=400)
+
+    document = data["document"]
+    validator = DocumentValidator(document)
+
+    if not validator.validate():
+        return Response("Документ недействителен или пуст", status=400)
+
+    with open("rules/diploma_rules.json", "r", encoding="utf-8") as file:
+        rules = json.load(file)
+        required_chapters = rules["structure_rules"]["required_chapters"]
+
+    found_parts = validator.get_parts(required_chapters)
+    missing_parts = set(required_chapters) - set([p["text"] for p in found_parts])
+    duplicates = [part["text"] for part in found_parts if found_parts.count(part) > 1]
+
+    response_data = {
+        "required_chapters": required_chapters,
+        "found_chapters": [p["text"] for p in found_parts],
+        "missing_chapters": list(missing_parts),
+        "duplicate_chapters": duplicates
+    }
+
+    return response_data, 200
+
 
 
 if __name__ == '__main__':
