@@ -6,6 +6,7 @@ from src.models.validation_result import ValidationResult
 
 class Document(AbstractModel):
     """Модель документа"""
+    __content = None
     __doc_type: DocType = None
     __result: ValidationResult = None
 

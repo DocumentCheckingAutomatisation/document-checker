@@ -1,4 +1,5 @@
 import json
+import os
 
 import connexion
 from flask import Response
@@ -7,6 +8,8 @@ from flask import request
 from src.core.doc_type import DocType
 from src.core.event_type import EventType
 from src.core.validator import OperationException
+from src.logics.checkers.docx_checker import DocxChecker
+from src.logics.checkers.latex_checker import LatexChecker
 from src.logics.doc_service import DocService
 from src.logics.checkers.doc_validator import DocumentValidator
 from src.logics.logging import Logging
@@ -107,8 +110,33 @@ def validate_document():
     return response_data, 200
 
 
+@app.route("/api/documents/check", methods=["POST"])
+def check_document():
+    if "file" not in request.files or "doc_type" not in request.form:
+        return Response("Файл и тип документа обязательны", status=400)
+
+    file = request.files["file"]
+    doc_type = request.form["doc_type"].upper()
+
+    try:
+        doc_type_enum = DocType[doc_type]
+    except KeyError:
+        return Response(f"Неизвестный тип документа: {doc_type}", status=400)
+
+    file_extension = os.path.splitext(file.filename)[1].lower()
+
+    if file_extension == ".docx":
+        checker = DocxChecker(file)
+    elif file_extension == ".tex":
+        checker = LatexChecker(file)
+    else:
+        return Response("Неподдерживаемый формат файла", status=400)
+
+    validation_result = checker.check_document()
+    return validation_result, 200
+
 
 if __name__ == '__main__':
-    ObserveService.raise_event(EventType.LOG_INFO, params="Запуск FastAPI")
+    ObserveService.raise_event(EventType.LOG_INFO, params="Запуск API")
     app.add_api("swagger.yaml")
     app.run(port=8080)

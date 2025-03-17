@@ -172,3 +172,27 @@ paths:
           description: Ошибка в переданных данных (например, документ отсутствует)
         500:
           description: Внутренняя ошибка сервера
+  /documents/check:
+    post:
+      summary: Проверить загруженный документ по указанному типу
+      operationId: main.check_document
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: file
+          in: formData
+          required: true
+          type: file
+          description: Загружаемый файл (docx, tex)
+        - name: doc_type
+          in: formData
+          required: true
+          type: string
+          description: Тип документа (например, "diploma", "course_Work", "practice_report")
+      responses:
+        200:
+          description: Результаты проверки документа
+        400:
+          description: Ошибка в переданных данных (например, неподдерживаемый формат файла)
+        500:
+          description: Внутренняя ошибка сервера
