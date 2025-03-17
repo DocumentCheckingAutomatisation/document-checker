@@ -8,7 +8,7 @@ from src.core.doc_type import DocType
 from src.core.event_type import EventType
 from src.core.validator import OperationException
 from src.logics.doc_service import DocService
-from src.logics.document_validator import DocumentValidator
+from src.logics.checkers.doc_validator import DocumentValidator
 from src.logics.logging import Logging
 from src.logics.observe_service import ObserveService
 from src.logics.rule_service import RuleService
