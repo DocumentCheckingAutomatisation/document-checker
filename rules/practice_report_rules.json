@@ -17,18 +17,18 @@
   },
   "structure_rules": {
     "required_chapters": [
-      "Титульный лист",
-      "Содержание",
-      "Введение",
-      "1",
-      "2",
-      "Заключение",
-      "Список использованных источников",
-      "Приложение"
+      "титульный лист",
+      "содержание",
+      "введение",
+      "1 ",
+      "2 ",
+      "заключение",
+      "список использованных источников",
+      "приложение"
     ],
     "required_sections": {
-      "1": ["1.1","Выводы по главе"],
-      "2": ["2.1","Выводы по главе"]
+      "1": ["1.1 ","выводы по главе"],
+      "2": ["2.1 ","выводы по главе"]
     },
     "introduction_keywords": [
       "актуальность",
@@ -36,45 +36,18 @@
       "предмет исследования",
       "цель работы",
       "задачи",
-      "научная новизна",
+      "теоретическая новизна",
       "практическая значимость"
     ],
     "numbering": {
       "unnumbered_chapters": [
-        "Введение",
-        "Содержание",
-        "Заключение",
-        "Список использованных источников",
-        "Приложение"
+        "введение",
+        "содержание",
+        "заключение",
+        "список использованных источников",
+        "приложение"
       ],
-      "numbered_chapters": [
-        "1",
-        "2"
-      ],
-      "chapter_numbering": {
-        "numbering": true,
-        "uppercase": true,
-        "bold": true,
-        "no_trailing_dot": true,
-        "numbering_style": "arabic",
-        "level": 1
-      },
-      "section_numbering": {
-        "numbering": true,
-        "uppercase": false,
-        "bold": true,
-        "no_trailing_dot": true,
-        "numbering_style": "arabic",
-        "level": 2
-      },
-      "subsection_numbering": {
-        "numbering": false,
-        "uppercase": false,
-        "bold": "true",
-        "no_trailing_dot": true,
-        "numbering_style": "arabic",
-        "level": 3
-      }
+        "unnumbered_sections": ["выводы по главе"]
     }
   },
   "design_rules": {
@@ -86,21 +59,34 @@
       "bold": true,
       "italic": false,
       "underline": false,
-      "alignment": "center"
+      "alignment": "center",
+      "uppercase": true,
+      "no_trailing_dot": true,
+      "numbering_style": "arabic",
+      "numbering_level": 1
     },
     "section": {
       "font_size": 14,
       "bold": true,
       "italic": false,
       "underline": false,
-      "alignment": "left"
+      "alignment": "left",
+      "uppercase": false,
+      "no_trailing_dot": true,
+      "numbering_style": "arabic",
+      "numbering_level": 1
     },
     "subsection": {
       "font_size": 14,
       "bold": false,
       "italic": true,
       "underline": false,
-      "alignment": "left"
+      "alignment": "left",
+      "uppercase": false,
+      "no_trailing_dot": true,
+      "numbering_style": "arabic",
+      "numbering_level": 1,
+      "numbering": false
     },
     "text": {
       "bold": false,
