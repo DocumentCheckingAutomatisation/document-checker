@@ -1,134 +1,104 @@
-import json
-import os
-
-import connexion
-from flask import Response
-from flask import request
-
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from typing import List
 from src.core.doc_type import DocType
 from src.core.event_type import EventType
 from src.core.validator import OperationException
 from src.logics.checkers.docx_checker import DocxChecker
 from src.logics.checkers.latex_checker import LatexChecker
 from src.logics.doc_service import DocService
-from src.logics.checkers.doc_validator import DocumentValidator
 from src.logics.logging import Logging
-from src.logics.observe_service import ObserveService
 from src.logics.rule_service import RuleService
+from src.logics.observe_service import ObserveService
 from src.settings_manager import SettingsManager
 
-app = connexion.FlaskApp(__name__)
+app = FastAPI()
 
 manager = SettingsManager()
 manager.open("settings.json")
 logging = Logging(manager)
 
 
-@app.route("/api/documents/options", methods=["GET"])
+@app.get("/api/documents/options")
 def docs_for_validation_options():
-    ObserveService.raise_event(EventType.LOG_DEBUG, params="Запрос: /api/documents/options [GET]")
+    ObserveService.raise_event(EventType.LOG_DEBUG, "Запрос: /api/documents/options [GET]")
     doc_options = DocService.get_doc_types()
-    ObserveService.raise_event(EventType.LOG_INFO, params="Список доступных типов документов для проверки возвращен")
+    ObserveService.raise_event(EventType.LOG_INFO, "Список доступных типов документов для проверки возвращен")
     return doc_options
 
 
-@app.route("/api/rules/options", methods=["GET"])
+@app.get("/api/rules/options")
 def rules_options():
-    ObserveService.raise_event(EventType.LOG_DEBUG, params="Запрос: /api/rules/options [GET]")
+    ObserveService.raise_event(EventType.LOG_DEBUG, "Запрос: /api/rules/options [GET]")
     result = RuleService.get_rule_types()
-    ObserveService.raise_event(EventType.LOG_INFO, params="Список доступных типов правил проверки возвращен")
+    ObserveService.raise_event(EventType.LOG_INFO, "Список доступных типов правил проверки возвращен")
     return result
 
 
-@app.route("/api/rules/<doc_type>", methods=["GET"])
-def exact_rules(doc_type):
-    ObserveService.raise_event(EventType.LOG_DEBUG, params=f"Запрос правил для типа документа: {doc_type} [GET]")
+@app.get("/api/rules/{doc_type}")
+def exact_rules(doc_type: str):
+    ObserveService.raise_event(EventType.LOG_DEBUG, f"Запрос правил для типа документа: {doc_type} [GET]")
     try:
         doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
-        return Response(f"Неизвестный тип документа: {doc_type}", status=400)
+        raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
     rules = RuleService.get_rules_for_doc(doc_type_enum)
-    ObserveService.raise_event(EventType.LOG_INFO, params=f"Правила для {doc_type} возвращены")
+    ObserveService.raise_event(EventType.LOG_INFO, f"Правила для {doc_type} возвращены")
     return rules
 
 
-@app.route("/api/rules/update", methods=["POST"])
-def change_rules():
-    data = request.get_json()
-    if not data:
-        return Response("Нет данных в запросе", status=400)
-
-    doc_type_str = data.get("doc_type")
-    rule_key = data.get("rule_key")
-    new_value = data.get("new_value")  # Для списка: "[\"Титульный лист\",\"Содержание\",\"Введение\",\"1\",\"2\",\"Заключение\",\"Список использованных источников\",\"Приложение\"]"
-
-    if not doc_type_str or not rule_key or not new_value:
-        return Response("Необходимо передать 'doc_type', 'rule_key' и 'new_value'", status=400)
-
+@app.post("/api/rules/update")
+def change_rules(doc_type: str, rule_key: str, new_value: str):
     try:
-        doc_type_enum = DocType[doc_type_str.upper()]
+        doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
-        return Response(f"Неизвестный тип документа: {doc_type_str}", status=400)
+        raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
     try:
         RuleService.update_rule(doc_type_enum, rule_key, new_value)
-        ObserveService.raise_event(EventType.LOG_INFO,
-                                   params=f"Правило {rule_key} для {doc_type_str} изменено на {new_value}")
-        return Response(f"Правило {rule_key} успешно обновлено на {new_value}", status=200)
+        ObserveService.raise_event(EventType.LOG_INFO, f"Правило {rule_key} для {doc_type} изменено на {new_value}")
+        return {"message": f"Правило {rule_key} успешно обновлено"}
     except OperationException as e:
-        return Response(f"Ошибка: {str(e)}", status=400)
+        raise HTTPException(status_code=400, detail=f"Ошибка: {str(e)}")
     except Exception as e:
-        return Response(f"Внутренняя ошибка сервера: {str(e)}", status=500)
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
-@app.route("/api/documents/validate/single_file", methods=["POST"])
-def validate_document_single_file():
-    if "file" not in request.files or "doc_type" not in request.form:
-        return Response("Файл и тип документа обязательны", status=400)
 
-    file = request.files["file"]
-    doc_type = request.form["doc_type"].upper()
-
+@app.post("/api/documents/validate/single_file")
+def validate_document_single_file(
+        file: UploadFile = File(...),
+        doc_type: str = Form(...)
+):
     try:
-        doc_type_enum = DocType[doc_type]
+        doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
-        return Response(f"Неизвестный тип документа: {doc_type}", status=400)
+        raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
-    file_extension = os.path.splitext(file.filename)[1].lower()
-
-    if file_extension == ".docx":
-        checker = DocxChecker(file)
-    elif file_extension == ".tex":
-        checker = LatexChecker(file)
+    file_extension = file.filename.split(".")[-1].lower()
+    if file_extension == "docx":
+        checker = DocxChecker(file.file)
+    elif file_extension == "tex":
+        checker = LatexChecker(file.file)
     else:
-        return Response("Неподдерживаемый формат файла", status=400)
+        raise HTTPException(status_code=400, detail="Неподдерживаемый формат файла")
 
     validation_result = checker.check_document()
-    return validation_result, 200
+    return validation_result
 
-@app.route("/api/documents/validate/latex", methods=["POST"])
-def validate_document_latex():
-    if "tex_file" not in request.files or "sty_file" not in request.files or "doc_type" not in request.form:
-        return Response("Оба файла (.tex и .sty) и тип документа обязательны", status=400)
 
-    tex_file = request.files["tex_file"]
-    sty_file = request.files["sty_file"]
-    doc_type = request.form["doc_type"].upper()
-
+@app.post("/api/documents/validate/latex")
+def validate_document_latex(
+        tex_file: UploadFile = File(...),
+        sty_file: UploadFile = File(...),
+        doc_type: str = Form(...)
+):
     try:
-        doc_type_enum = DocType[doc_type]
+        doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
-        return Response(f"Неизвестный тип документа: {doc_type}", status=400)
+        raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
     if not tex_file.filename.endswith(".tex") or not sty_file.filename.endswith(".sty"):
-        return Response("Файлы должны быть в формате .tex и .sty", status=400)
+        raise HTTPException(status_code=400, detail="Файлы должны быть в формате .tex и .sty")
 
-    checker = LatexChecker(tex_file, sty_file)
+    checker = LatexChecker(tex_file.file, sty_file.file)
     validation_result = checker.check_document()
-
-    return validation_result, 200
-
-
-if __name__ == '__main__':
-    ObserveService.raise_event(EventType.LOG_INFO, params="Запуск API")
-    app.add_api("swagger.yaml")
-    app.run(port=8080)
+    return validation_result
