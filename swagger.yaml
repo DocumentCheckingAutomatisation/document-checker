@@ -109,73 +109,10 @@ paths:
           description: Ошибка в переданных данных
         500:
           description: Ошибка при обновлении правила
-  /documents/validate:
+  /documents/validate/single_file:
     post:
-      summary: Проверить документ на соответствие требованиям
-      operationId: main.validate_document
-      parameters:
-        - name: body
-          in: body
-          required: true
-          schema:
-            type: object
-            required:
-              - document
-            properties:
-              document:
-                type: array
-                description: JSON-структура документа с аннотациями
-                items:
-                  type: object
-                  properties:
-                    text:
-                      type: string
-                      description: Название раздела документа
-                    annotations:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          name:
-                            type: string
-                            description: Тип аннотации (например, "size", "style")
-                          value:
-                            type: string
-                            description: Значение аннотации
-      responses:
-        200:
-          description: Результаты проверки документа
-          schema:
-            type: object
-            properties:
-              required_chapters:
-                type: array
-                items:
-                  type: string
-                description: Список обязательных разделов
-              found_chapters:
-                type: array
-                items:
-                  type: string
-                description: Найденные в документе разделы
-              missing_chapters:
-                type: array
-                items:
-                  type: string
-                description: Отсутствующие обязательные разделы
-              duplicate_chapters:
-                type: array
-                items:
-                  type: string
-                description: Разделы, которые встречаются более одного раза
-        400:
-          description: Ошибка в переданных данных (например, документ отсутствует)
-        500:
-          description: Внутренняя ошибка сервера
-  /documents/check:
-    post:
-      summary: Проверить загруженный документ по указанному типу
-      operationId: main.check_document
+      summary: Проверить загруженный документ по указанному типу работы
+      operationId: main.validate_document_single_file
       consumes:
         - multipart/form-data
       parameters:
@@ -188,11 +125,40 @@ paths:
           in: formData
           required: true
           type: string
-          description: Тип документа (например, "diploma", "course_Work", "practice_report")
+          description: Тип документа (например, "diploma", "course_work", "practice_report")
       responses:
         200:
           description: Результаты проверки документа
         400:
           description: Ошибка в переданных данных (например, неподдерживаемый формат файла)
+        500:
+          description: Внутренняя ошибка сервера
+  /documents/validate/latex:
+    post:
+      summary: Проверить документ, переданный в формате LaTeX
+      operationId: main.validate_document_latex
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: tex_file
+          in: formData
+          required: true
+          type: file
+          description: Файл с содержанием документа (.tex)
+        - name: sty_file
+          in: formData
+          required: true
+          type: file
+          description: Файл с правилами оформления документа (.sty)
+        - name: doc_type
+          in: formData
+          required: true
+          type: string
+          description: Тип документа (например, "diploma", "course_work", "practice_report")
+      responses:
+        200:
+          description: Результаты проверки документа
+        400:
+          description: Ошибка в переданных данных (например, отсутствует один из файлов)
         500:
           description: Внутренняя ошибка сервера

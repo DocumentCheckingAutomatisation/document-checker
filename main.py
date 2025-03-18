@@ -80,38 +80,8 @@ def change_rules():
     except Exception as e:
         return Response(f"Внутренняя ошибка сервера: {str(e)}", status=500)
 
-@app.route("/api/documents/validate", methods=["POST"])
-def validate_document():
-    data = request.get_json()
-    if not data or "document" not in data:
-        return Response("Отсутствует документ в запросе", status=400)
-
-    document = data["document"]
-    validator = DocumentValidator(document)
-
-    if not validator.validate():
-        return Response("Документ недействителен или пуст", status=400)
-
-    with open("rules/diploma_rules.json", "r", encoding="utf-8") as file:
-        rules = json.load(file)
-        required_chapters = rules["structure_rules"]["required_chapters"]
-
-    found_parts = validator.get_parts(required_chapters)
-    missing_parts = set(required_chapters) - set([p["text"] for p in found_parts])
-    duplicates = [part["text"] for part in found_parts if found_parts.count(part) > 1]
-
-    response_data = {
-        "required_chapters": required_chapters,
-        "found_chapters": [p["text"] for p in found_parts],
-        "missing_chapters": list(missing_parts),
-        "duplicate_chapters": duplicates
-    }
-
-    return response_data, 200
-
-
-@app.route("/api/documents/check", methods=["POST"])
-def check_document():
+@app.route("/api/documents/validate/single_file", methods=["POST"])
+def validate_document_single_file():
     if "file" not in request.files or "doc_type" not in request.form:
         return Response("Файл и тип документа обязательны", status=400)
 
@@ -133,6 +103,28 @@ def check_document():
         return Response("Неподдерживаемый формат файла", status=400)
 
     validation_result = checker.check_document()
+    return validation_result, 200
+
+@app.route("/api/documents/validate/latex", methods=["POST"])
+def validate_document_latex():
+    if "tex_file" not in request.files or "sty_file" not in request.files or "doc_type" not in request.form:
+        return Response("Оба файла (.tex и .sty) и тип документа обязательны", status=400)
+
+    tex_file = request.files["tex_file"]
+    sty_file = request.files["sty_file"]
+    doc_type = request.form["doc_type"].upper()
+
+    try:
+        doc_type_enum = DocType[doc_type]
+    except KeyError:
+        return Response(f"Неизвестный тип документа: {doc_type}", status=400)
+
+    if not tex_file.filename.endswith(".tex") or not sty_file.filename.endswith(".sty"):
+        return Response("Файлы должны быть в формате .tex и .sty", status=400)
+
+    checker = LatexChecker(tex_file, sty_file)
+    validation_result = checker.check_document()
+
     return validation_result, 200
 
 

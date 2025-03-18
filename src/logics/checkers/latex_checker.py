@@ -2,8 +2,9 @@ from src.models.document import Document
 
 
 class LatexChecker():
-    def __init__(self, file):
-        self.file = file
+    def __init__(self, tex_file, sty_file):
+        self.tex_file = tex_file
+        self.sty_file = sty_file
 
     def check_document(self):
         try:
