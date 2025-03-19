@@ -1,32 +1,17 @@
 import re
-from src.models.document import Document
-from src.core.doc_type import DocType
+from typing import Dict, Any
 
 
 class LatexParser:
-    def __init__(self, file_path):
-        self.file_path = file_path
-        self.content = ""
-        self.structure = {
-            "chapters": [],
-            "sections": [],
-            "subsections": []
-        }
+    def __init__(self, tex_file):
+        self.tex_content = tex_file.read().decode("utf-8")
+        self.structure = self.parse_structure()
 
-    def parse(self):
-        """Считывает содержимое файла и извлекает структуру документа."""
-        with open(self.file_path, "r", encoding="utf-8") as file:
-            self.content = file.read()
+    def parse_structure(self) -> Dict[str, Any]:
+        numbered_chapters = re.findall(r'\\chapter\{(.+?)\}', self.tex_content)
+        unnumbered_chapters = re.findall(r'\\chapter\*\{(.+?)\}', self.tex_content)
 
-        self.structure["chapters"] = re.findall(r"\\chapter{(.*?)}", self.content)
-        self.structure["sections"] = re.findall(r"\\section{(.*?)}", self.content)
-        self.structure["subsections"] = re.findall(r"\\subsection{(.*?)}", self.content)
-
-    def to_document(self):
-        """Конвертирует спарсенные данные в объект Document."""
-        doc = Document()
-        doc.name = "Parsed LaTeX Document"
-        doc.doc_type = DocType.DIPLOMA  # Можно определить по контексту
-        doc.result = None  # Проверки пока не проводим
-        doc._Document__content = self.structure  # Сохраняем структуру
-        return doc
+        sections = re.findall(r'\\section\{(.+?)\}', self.tex_content)
+        parsed_structure = {"numbered_chapters": numbered_chapters, "unnumbered_chapters": unnumbered_chapters,
+                            "sections": sections}
+        return parsed_structure
