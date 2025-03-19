@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from typing import List
+from fastapi.params import Path
+
 from src.core.doc_type import DocType
 from src.core.event_type import EventType
 from src.core.validator import OperationException
@@ -7,8 +8,9 @@ from src.logics.checkers.docx_checker import DocxChecker
 from src.logics.checkers.latex_checker import LatexChecker
 from src.logics.doc_service import DocService
 from src.logics.logging import Logging
-from src.logics.rule_service import RuleService
 from src.logics.observe_service import ObserveService
+from src.logics.parsers.latex_parser import LatexParser
+from src.logics.rule_service import RuleService
 from src.settings_manager import SettingsManager
 
 app = FastAPI()
@@ -19,7 +21,7 @@ logging = Logging(manager)
 
 
 @app.get("/api/documents/options")
-def docs_for_validation_options():
+def docs_options():
     ObserveService.raise_event(EventType.LOG_DEBUG, "Запрос: /api/documents/options [GET]")
     doc_options = DocService.get_doc_types()
     ObserveService.raise_event(EventType.LOG_INFO, "Список доступных типов документов для проверки возвращен")
@@ -35,13 +37,16 @@ def rules_options():
 
 
 @app.get("/api/rules/{doc_type}")
-def exact_rules(doc_type: str):
+def exact_rules(
+        doc_type: str = Path(..., description="Тип документа",
+                             enum=["diploma", "course_work", "practice_report"])
+):
     ObserveService.raise_event(EventType.LOG_DEBUG, f"Запрос правил для типа документа: {doc_type} [GET]")
     try:
         doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
         raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
-    rules = RuleService.get_rules_for_doc(doc_type_enum)
+    rules = RuleService.load_rules(doc_type_enum)
     ObserveService.raise_event(EventType.LOG_INFO, f"Правила для {doc_type} возвращены")
     return rules
 
@@ -66,7 +71,7 @@ def change_rules(doc_type: str, rule_key: str, new_value: str):
 @app.post("/api/documents/validate/single_file")
 def validate_document_single_file(
         file: UploadFile = File(...),
-        doc_type: str = Form(...)
+        doc_type: str = Form(..., description="Тип документа (выберите из: diploma, course_work, practice_report)")
 ):
     try:
         doc_type_enum = DocType[doc_type.upper()]
@@ -89,16 +94,21 @@ def validate_document_single_file(
 def validate_document_latex(
         tex_file: UploadFile = File(...),
         sty_file: UploadFile = File(...),
-        doc_type: str = Form(...)
+        doc_type: str = Form(..., description="Тип документа (выберите из: diploma, course_work, practice_report)")
 ):
     try:
         doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
         raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
-    if not tex_file.filename.endswith(".tex") or not sty_file.filename.endswith(".sty"):
-        raise HTTPException(status_code=400, detail="Файлы должны быть в формате .tex и .sty")
+    if not tex_file.filename.endswith(".tex"):
+        raise HTTPException(status_code=400, detail=f"Ожидался .tex файл, но получен: {tex_file.filename}")
+    if not sty_file.filename.endswith(".sty"):
+        raise HTTPException(status_code=400, detail=f"Ожидался .sty файл, но получен: {sty_file.filename}")
+    if tex_file.filename.endswith(".sty") or sty_file.filename.endswith(".tex"):
+        raise HTTPException(status_code=400,
+                            detail="Файлы перепутаны местами. Загрузите .tex как tex_file и .sty как sty_file")
 
-    checker = LatexChecker(tex_file.file, sty_file.file)
+    checker = LatexChecker(tex_file.file, sty_file.file, doc_type_enum)
     validation_result = checker.check_document()
     return validation_result
