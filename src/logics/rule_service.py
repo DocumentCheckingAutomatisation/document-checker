@@ -5,17 +5,23 @@ from src.core.doc_type import DocType
 from src.core.event_type import EventType
 from src.core.rule_type import RuleType
 from src.logics.observe_service import ObserveService
-from src.core.validator import Validator, ArgumentException, OperationException
+from src.core.validator import OperationException
 
 
 class RuleService(AbstractLogic):
+    RULES_PATH = "../rules"  # Корневой путь к файлам с правилами
 
     def __init__(self):
         ObserveService.append(self)
 
-    @staticmethod
-    def get_rules_for_doc(doc_type: DocType):
-        file_path = f"rules/{doc_type.name.lower()}_rules.json"
+    @classmethod
+    def get_rules_path(cls, doc_type: DocType) -> str:
+        """Возвращает путь к файлу с правилами для указанного типа документа."""
+        return f"{cls.RULES_PATH}/{doc_type.name.lower()}_rules.json"
+
+    @classmethod
+    def load_rules(cls, doc_type: DocType):
+        file_path = cls.get_rules_path(doc_type)
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 return json.load(file)
@@ -27,9 +33,9 @@ class RuleService(AbstractLogic):
     def get_rule_types():
         return [{"name": rule.name, "value": rule.value} for rule in RuleType]
 
-    @staticmethod
-    def save_rules(doc_type: DocType, rules_data: dict):
-        file_path = f"rules/{doc_type.name.lower()}_rules.json"
+    @classmethod
+    def save_rules(cls, doc_type: DocType, rules_data: dict):
+        file_path = cls.get_rules_path(doc_type)
         try:
             with open(file_path, 'w', encoding='utf-8') as file:
                 json.dump(rules_data, file, ensure_ascii=False, indent=2)
@@ -38,9 +44,9 @@ class RuleService(AbstractLogic):
             print(f"Ошибка при сохранении правил: {e}")
             return False
 
-    @staticmethod
-    def update_rule(doc_type: DocType, rule_path: str, new_value):
-        rules_data = RuleService.get_rules_for_doc(doc_type)
+    @classmethod
+    def update_rule(cls, doc_type: DocType, rule_path: str, new_value):
+        rules_data = cls.load_rules(doc_type)
 
         keys = rule_path.split(".")  # Разбиваем путь по точкам
         current = rules_data
@@ -68,7 +74,7 @@ class RuleService(AbstractLogic):
             raise OperationException(f"Ошибка приведения типов для {rule_path}: {e}")
         current[last_key] = new_value
 
-        if not RuleService.save_rules(doc_type, rules_data):
+        if not cls.save_rules(doc_type, rules_data):
             raise OperationException("Ошибка при сохранении правил.")
 
         return True
