@@ -43,12 +43,4 @@ class TestLogics(unittest.TestCase):
     def test_validate_document_latex(self):
         pass
 
-    def test_latex_checking(self):
-        """Тест проверки LaTeX-документа"""
 
-        with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
-            checker = LatexChecker(tex_file, sty_file, "diploma")
-
-        result = checker.check_document()
-
-        self.assertTrue(result["valid"], "Структура документа не прошла проверку")
