@@ -24,6 +24,8 @@ class TestCheckingLatex(unittest.TestCase):
             checker = LatexChecker(tex_file, sty_file, "diploma")
 
         result = checker.check_document()
+        print(checker.parsed_structure)
+        print(checker.errors)
 
         self.assertTrue(result["valid"], "Структура документа не прошла проверку")
 

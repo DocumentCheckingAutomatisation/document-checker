@@ -7,7 +7,7 @@ from src.logics.checkers.latex_checker import LatexChecker
 from src.settings_manager import SettingsManager
 
 
-class TestLogics(unittest.TestCase):
+class TestAPI(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
