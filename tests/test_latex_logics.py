@@ -13,9 +13,21 @@ class TestCheckingLatex(unittest.TestCase):
     def test_parse_structure(self):
         with open("../docs/main.tex", "rb") as tex_file:
             parser = LatexParser(tex_file)
-            print(parser.structure)
+            print(parser.parsed_document)
 
-        self.assertTrue(parser.structure, "Структура документа не была распарсена")
+        self.assertTrue(parser.parsed_document, "Структура документа не была распарсена")
+
+    def test_latex_check_introduction_keywords(self):
+        """Тест проверки ключевых слов во введении"""
+
+        with open("../docs/main.tex", "rb") as tex_file:
+
+            checker = LatexChecker(tex_file, None, "course_work")
+
+        checker.check_introduction_keywords()
+        print(checker.errors)
+
+        self.assertTrue(not checker.errors, "Ключевые слова во введении не были")
 
     def test_latex_checking(self):
         """Тест проверки LaTeX-документа"""
@@ -24,7 +36,7 @@ class TestCheckingLatex(unittest.TestCase):
             checker = LatexChecker(tex_file, sty_file, "course_work")
 
         result = checker.check_document()
-        print(checker.parsed_structure)
+        print(checker.parsed_document)
         print(checker.errors)
 
         self.assertTrue(result["valid"], "Структура документа не прошла проверку")
