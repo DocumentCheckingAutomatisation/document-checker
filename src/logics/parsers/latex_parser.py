@@ -10,27 +10,31 @@ class LatexParser:
         self.run_checks()
 
     def parse_structure(self) -> Dict[str, Any]:
-        # Найдем все нумерованные главы
-        numbered_chapters = re.findall(r'\\chapter\{(.+?)\}', self.tex_content)
-        numbered_chapters_formatted = [f"{i+1} глава" for i in range(len(numbered_chapters))]
+        # Найдем все нумерованные главы и их заголовки
+        chapter_titles = re.findall(r'\\chapter\{(.+?)\}', self.tex_content)
+        chapters = list(re.finditer(r'\\chapter\{(.+?)\}', self.tex_content))
 
-        # Найдем все нумерованные разделы
-        sections = re.findall(r'\\section\{(.+?)\}', self.tex_content)
+        numbered_chapters_formatted = [f"{i+1} глава" for i in range(len(chapter_titles))]
+
+        # Найдем все нумерованные разделы с их заголовками и позициями
+        sections = list(re.finditer(r'\\section\{(.+?)\}', self.tex_content))
 
         # Сформируем список с номерами разделов, например "1.1 Название раздела"
         numbered_sections = []
-        chapter_counter = 0
+        chapter_index = 0
         section_counter = 0
 
         for section in sections:
-            # При переходе к новой главе сбрасываем счетчик разделов
-            if section_counter == 0 or (section_counter == 1 and section not in sections[:sections.index(section)]):
-                chapter_counter += 1
-                section_counter = 1  # сбрасываем счетчик секций для каждой новой главы
-            else:
-                section_counter += 1
+            section_title = section.group(1)
+            section_pos = section.start()
 
-            numbered_sections.append(f"{chapter_counter}.{section_counter} {section}")
+            # Проверяем, относится ли этот раздел к новой главе
+            while chapter_index < len(chapters) and chapters[chapter_index].start() < section_pos:
+                chapter_index += 1
+                section_counter = 0  # Обнуляем счетчик разделов при переходе к новой главе
+
+            section_counter += 1
+            numbered_sections.append(f"{chapter_index}.{section_counter} раздел")
 
         return {
             "numbered_chapters": numbered_chapters_formatted,

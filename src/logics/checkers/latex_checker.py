@@ -42,21 +42,3 @@ class LatexChecker:
 
     def check_introduction_keywords(self):
         pass
-
-    # def check_document(self):
-    #     errors = []
-    #     structure_rules = self.rules.get("structure_rules", {})
-    #
-    #     required_chapters = structure_rules.get("required_chapters", [])
-    #     for chapter in required_chapters:
-    #         if chapter not in self.parsed_structure.chapters:
-    #             errors.append(f"Отсутствует обязательный раздел: {chapter}")
-    #
-    #     required_sections = structure_rules.get("required_sections", {})
-    #     for chapter, sections in required_sections.items():
-    #         if chapter in self.parsed_structure.sections:
-    #             for section in sections:
-    #                 if section not in self.parsed_structure.sections[chapter]:
-    #                     errors.append(f"В главе {chapter} отсутствует обязательный раздел: {section}")
-    #
-    #     return {"errors": errors}

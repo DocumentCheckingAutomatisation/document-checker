@@ -21,7 +21,7 @@ class TestCheckingLatex(unittest.TestCase):
         """Тест проверки LaTeX-документа"""
 
         with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
-            checker = LatexChecker(tex_file, sty_file, "diploma")
+            checker = LatexChecker(tex_file, sty_file, "course_work")
 
         result = checker.check_document()
         print(checker.parsed_structure)
