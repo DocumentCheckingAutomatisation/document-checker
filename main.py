@@ -74,6 +74,30 @@ def change_rules(doc_type: str, rule_key: str, new_value: str):
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 
+@app.post("/api/rules/update/all")
+def change_rule_for_all(rule_key: str, new_value: str):
+    ObserveService.raise_event(EventType.LOG_DEBUG, f"Запрос на изменение правила {rule_key} для всех типов документов [POST]")
+
+    updated_docs = []
+    errors = []
+
+    for doc_type_enum in DocType:
+        try:
+            RuleService.update_rule(doc_type_enum, rule_key, new_value)
+            updated_docs.append(doc_type_enum.name.lower())
+            ObserveService.raise_event(EventType.LOG_INFO, f"Правило {rule_key} для {doc_type_enum.name.lower()} обновлено на {new_value}")
+        except OperationException as e:
+            errors.append(f"{doc_type_enum.name.lower()}: {str(e)}")
+            ObserveService.raise_event(EventType.LOG_ERROR, f"Ошибка при обновлении {rule_key} для {doc_type_enum.name.lower()}: {str(e)}")
+        except Exception as e:
+            errors.append(f"{doc_type_enum.name.lower()}: Внутренняя ошибка")
+            ObserveService.raise_event(EventType.LOG_ERROR, f"Внутренняя ошибка сервера при обновлении {rule_key} для {doc_type_enum.name.lower()}: {str(e)}")
+
+    if errors:
+        return {"message": "Некоторые обновления прошли с ошибками", "updated": updated_docs, "errors": errors}
+    return {"message": f"Правило {rule_key} успешно обновлено для всех типов документов", "updated": updated_docs}
+
+
 @app.post("/api/documents/validate/single_file")
 def validate_document_single_file(
         file: UploadFile = File(...),
