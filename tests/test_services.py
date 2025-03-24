@@ -1,6 +1,7 @@
 import unittest
 
 from src.core.doc_type import DocType
+from src.logics.doc_service import DocService
 from src.logics.rule_service import RuleService
 from src.settings_manager import SettingsManager
 
@@ -22,3 +23,10 @@ class TestServices(unittest.TestCase):
         """Тест получения типов правил"""
         types = RuleService.get_rule_types()
         self.assertTrue(types, "Ошибка при получении типов правил")
+        self.assertEqual(types[0]["name"], "COMMON", "Ошибка при получении названия правила")
+
+    def test_doc_service_get_doc_types(self):
+        """Тест получения типов документов"""
+        types = DocService.get_doc_types()
+        self.assertTrue(types, "Ошибка при получении типов документов")
+        self.assertEqual(types[0]["name"], "DIPLOMA", "Ошибка при получении названия документа")

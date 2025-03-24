@@ -5,7 +5,7 @@ from src.logics.parsers.latex_parser import LatexParser
 from src.settings_manager import SettingsManager
 
 
-class TestCheckingLatex(unittest.TestCase):
+class TestLatexLogics(unittest.TestCase):
     def setUp(self):
         self.manager = SettingsManager()
         self.manager.open("../settings.json")

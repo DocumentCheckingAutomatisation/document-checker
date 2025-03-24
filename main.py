@@ -111,14 +111,14 @@ def validate_document_single_file(
         ObserveService.raise_event(EventType.LOG_ERROR, f"Неизвестный тип документа: {doc_type}")
         raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
+    # Проверяем, что файл имеет расширение .docx
     file_extension = file.filename.split(".")[-1].lower()
-    if file_extension == "docx":
-        checker = DocxChecker(file.file)
-    elif file_extension == "tex":
-        checker = LatexChecker(file.file)
-    else:
+    if file_extension != "docx":
         ObserveService.raise_event(EventType.LOG_ERROR, f"Неподдерживаемый формат файла: {file.filename}")
-        raise HTTPException(status_code=400, detail="Неподдерживаемый формат файла")
+        raise HTTPException(status_code=400, detail="Неподдерживаемый формат файла. Ожидается .docx")
+
+    # Инициализация чекера для .docx файла
+    checker = DocxChecker(file.file, doc_type_enum)
 
     validation_result = checker.check_document()
     ObserveService.raise_event(EventType.LOG_INFO, f"Файл {file.filename} успешно проверен")
