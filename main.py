@@ -9,7 +9,6 @@ from src.logics.checkers.latex_checker import LatexChecker
 from src.logics.doc_service import DocService
 from src.logics.logging import Logging
 from src.logics.observe_service import ObserveService
-from src.logics.parsers.latex_parser import LatexParser
 from src.logics.rule_service import RuleService
 from src.settings_manager import SettingsManager
 
@@ -45,7 +44,9 @@ def exact_rules(
     try:
         doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
+        ObserveService.raise_event(EventType.LOG_ERROR, f"Неизвестный тип документа: {doc_type}")
         raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
+
     rules = RuleService.load_rules(doc_type_enum)
     ObserveService.raise_event(EventType.LOG_INFO, f"Правила для {doc_type} возвращены")
     return rules
@@ -56,6 +57,8 @@ def change_rules(doc_type: str, rule_key: str, new_value: str):
     try:
         doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
+        ObserveService.raise_event(EventType.LOG_ERROR,
+                                   f"Попытка обновления правила для неизвестного типа документа: {doc_type}")
         raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
     try:
@@ -63,8 +66,11 @@ def change_rules(doc_type: str, rule_key: str, new_value: str):
         ObserveService.raise_event(EventType.LOG_INFO, f"Правило {rule_key} для {doc_type} изменено на {new_value}")
         return {"message": f"Правило {rule_key} успешно обновлено"}
     except OperationException as e:
+        ObserveService.raise_event(EventType.LOG_ERROR, f"Ошибка при обновлении правила {rule_key}: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Ошибка: {str(e)}")
     except Exception as e:
+        ObserveService.raise_event(EventType.LOG_ERROR,
+                                   f"Внутренняя ошибка сервера при обновлении правила {rule_key}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 
@@ -73,9 +79,12 @@ def validate_document_single_file(
         file: UploadFile = File(...),
         doc_type: str = Form(..., description="Тип документа (выберите из: diploma, course_work, practice_report)")
 ):
+    ObserveService.raise_event(EventType.LOG_DEBUG, f"Загрузка файла {file.filename} для проверки [POST]")
+
     try:
         doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
+        ObserveService.raise_event(EventType.LOG_ERROR, f"Неизвестный тип документа: {doc_type}")
         raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
     file_extension = file.filename.split(".")[-1].lower()
@@ -84,9 +93,11 @@ def validate_document_single_file(
     elif file_extension == "tex":
         checker = LatexChecker(file.file)
     else:
+        ObserveService.raise_event(EventType.LOG_ERROR, f"Неподдерживаемый формат файла: {file.filename}")
         raise HTTPException(status_code=400, detail="Неподдерживаемый формат файла")
 
     validation_result = checker.check_document()
+    ObserveService.raise_event(EventType.LOG_INFO, f"Файл {file.filename} успешно проверен")
     return validation_result
 
 
@@ -96,19 +107,27 @@ def validate_document_latex(
         sty_file: UploadFile = File(...),
         doc_type: str = Form(..., description="Тип документа (выберите из: diploma, course_work, practice_report)")
 ):
+    ObserveService.raise_event(EventType.LOG_DEBUG,
+                               f"Загрузка файлов {tex_file.filename} и {sty_file.filename} для проверки [POST]")
+
     try:
         doc_type_enum = DocType[doc_type.upper()]
     except KeyError:
+        ObserveService.raise_event(EventType.LOG_ERROR, f"Неизвестный тип документа: {doc_type}")
         raise HTTPException(status_code=400, detail=f"Неизвестный тип документа: {doc_type}")
 
     if not tex_file.filename.endswith(".tex"):
+        ObserveService.raise_event(EventType.LOG_ERROR, f"Ошибка: ожидался .tex файл, но получен {tex_file.filename}")
         raise HTTPException(status_code=400, detail=f"Ожидался .tex файл, но получен: {tex_file.filename}")
     if not sty_file.filename.endswith(".sty"):
+        ObserveService.raise_event(EventType.LOG_ERROR, f"Ошибка: ожидался .sty файл, но получен {sty_file.filename}")
         raise HTTPException(status_code=400, detail=f"Ожидался .sty файл, но получен: {sty_file.filename}")
     if tex_file.filename.endswith(".sty") or sty_file.filename.endswith(".tex"):
+        ObserveService.raise_event(EventType.LOG_ERROR, "Ошибка: файлы перепутаны местами")
         raise HTTPException(status_code=400,
                             detail="Файлы перепутаны местами. Загрузите .tex как tex_file и .sty как sty_file")
 
     checker = LatexChecker(tex_file.file, sty_file.file, doc_type_enum)
     validation_result = checker.check_document()
+    ObserveService.raise_event(EventType.LOG_INFO, f"Файлы {tex_file.filename} и {sty_file.filename} успешно проверены")
     return validation_result
