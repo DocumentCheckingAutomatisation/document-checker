@@ -19,6 +19,8 @@ class TestLatexLogics(unittest.TestCase):
         with open("../docs/main.tex", "rb") as tex_file:
             parser = LatexParser(tex_file)
             print(parser.parsed_document)
+            print()
+            print(parser.errors)
 
         self.assertTrue(parser.parsed_document, "Структура документа не была распарсена")
 
@@ -69,6 +71,7 @@ class TestLatexLogics(unittest.TestCase):
 
         result = checker.check_document()
         print(checker.parsed_document)
+        print()
         print(checker.errors)
 
         self.assertTrue(result["valid"], "Структура документа не прошла проверку")

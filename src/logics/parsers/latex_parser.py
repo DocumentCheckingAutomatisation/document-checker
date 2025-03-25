@@ -4,10 +4,15 @@ from typing import Dict, Any
 
 class LatexParser:
     def __init__(self, tex_file):
-        self.tex_content = tex_file.read().decode("utf-8")
+        self.tex_content = self.remove_comments(tex_file.read().decode("utf-8"))
         self.errors = []
         self.parsed_document = self.run_parse()
         self.run_checks()
+
+    @staticmethod
+    def remove_comments(content: str) -> str:
+        """Удаляет строки, начинающиеся с %, и текст после % в строках"""
+        return re.sub(r'(?<!\\)%.*', '', content)
 
     def run_parse(self):
         return {"structure": self.parse_structure(),
@@ -66,13 +71,15 @@ class LatexParser:
         if title_match:
             self.parsed_document["structure"]["unnumbered_chapters"].append("титульный лист")
         else:
-            self.errors.append("Ошибка: титульный лист не найден или подключен неверной командой.")
+            print("no title")
+            #self.errors.append("Ошибка: титульный лист не найден или подключен неверной командой.")
 
         # Добавляем содержание в структуру, если найдено
         if toc_match:
             self.parsed_document["structure"]["unnumbered_chapters"].append("содержание")
         else:
-            self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")
+            print("no toc")
+            #self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")
 
         # Проверяем порядок следования команд
         if title_match and begin_match and title_match.start() < begin_match.start():

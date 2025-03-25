@@ -1,10 +1,8 @@
-import json
-import re
 import os
+from typing import Dict, Any
 
 from src.core.doc_type import DocType
 from src.logics.parsers.latex_parser import LatexParser
-from typing import List, Dict, Any
 from src.logics.rule_service import RuleService
 
 
@@ -18,8 +16,9 @@ class LatexChecker:
 
     def check_document(self) -> Dict[str, Any]:
         self.check_structure()
+        self.check_introduction_keywords()
+        self.check_sty_file()
         return {"valid": not bool(self.errors), "errors": self.errors}
-
 
     def check_structure(self):
         required_chapters = self.rules["structure_rules"].get("required_chapters", [])
@@ -27,7 +26,8 @@ class LatexChecker:
 
         # Проверка глав
         all_chapters = [ch.lower() for ch in
-                        self.parsed_document["structure"]["numbered_chapters"] + self.parsed_document["structure"]["unnumbered_chapters"]]
+                        self.parsed_document["structure"]["numbered_chapters"] + self.parsed_document["structure"][
+                            "unnumbered_chapters"]]
 
         for chapter in required_chapters:
             if not any(chapter in parsed_ch for parsed_ch in all_chapters):
@@ -36,19 +36,25 @@ class LatexChecker:
         # Проверка разделов
         all_sections = [
             sec.lower() for sec in
-            self.parsed_document["structure"]["numbered_sections"] + self.parsed_document["structure"]["unnumbered_sections"]
+            self.parsed_document["structure"]["numbered_sections"] + self.parsed_document["structure"][
+                "unnumbered_sections"]
         ]
+        print(required_sections.items())
+        print(all_sections)
+
         for chapter, sections in required_sections.items():
+            print("chapter", chapter)
+            print("sections", sections)
             for section in sections:
+                print("section", section)
                 if not any(section in parsed_sec for parsed_sec in all_sections):
                     self.errors.append(f"В главе {chapter} отсутствует раздел: {section}")
-        print(self.errors)
 
     def check_introduction_keywords(self):
         introduction_keywords = self.rules["structure_rules"].get("introduction_keywords", [])
-        print(introduction_keywords)
+
         for keyword in introduction_keywords:
-            print(keyword)
+
             if keyword not in self.parsed_document["introduction"]:
                 print(keyword)
                 self.errors.append(f"Отсутствует ключевое слово во введении: {keyword}")
@@ -95,5 +101,4 @@ class LatexChecker:
             self.errors.append(
                 f"Файл settings.sty содержит {len(uploaded_lines)} строк, что больше ожидаемых {len(reference_lines)}."
             )
-
 
