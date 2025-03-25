@@ -57,7 +57,7 @@
       "doc_type": "Курсовая работа"
     },
     "chapter": {
-      "font_size": 14,
+      "font_size": "14.0",
       "bold": true,
       "italic": false,
       "underline": false,

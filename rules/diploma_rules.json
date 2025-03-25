@@ -1,7 +1,7 @@
 {
   "common_rules": {
     "font": "Times New Roman",
-    "font_size": 14,
+    "font_size": 14.0,
     "line_spacing": 1.5,
     "paragraph_indent": 1.25,
     "margins": {
@@ -66,7 +66,7 @@
       "doc_type": "выпускная квалификационная работа"
     },
     "chapter": {
-      "font_size": 14,
+      "font_size": "14.0",
       "bold": true,
       "italic": false,
       "underline": false,
