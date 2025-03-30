@@ -24,5 +24,4 @@ class TestDocxLogics(unittest.TestCase):
         print("checker.errors", checker.errors)
 
         self.assertFalse(result["valid"], "Структура документа не прошла проверку")
-        self.assertTrue(checker.errors,"Ошибки не были найдены")
-
+        self.assertTrue(checker.errors, "Ошибки не были найдены")

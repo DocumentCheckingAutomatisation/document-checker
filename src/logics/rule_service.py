@@ -9,7 +9,7 @@ from src.core.validator import OperationException
 
 
 class RuleService(AbstractLogic):
-    RULES_PATH = "../rules"
+    RULES_PATH = "rules"
 
     def __init__(self):
         ObserveService.append(self)

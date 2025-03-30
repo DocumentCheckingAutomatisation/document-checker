@@ -1,4 +1,3 @@
-import json
 from typing import Dict, Any
 
 from src.core.doc_type import DocType
@@ -17,7 +16,6 @@ class DocxChecker:
         self.check_structure()
         self.check_font_size()
         return {"valid": not bool(self.errors), "errors": self.errors}
-
 
     @staticmethod
     def get_parts(annotations, needed_parts):
@@ -49,9 +47,9 @@ class DocxChecker:
         duplicate_parts = [part for part in found_parts if found_parts.count(part) > 1]
 
         if missing_parts:
-            self.errors.append(f"Отсутствуют обязательные разделы: {', '.join(missing_parts)}")
+            self.errors.append(f"Отсутствует обязательная глава: {', '.join(missing_parts)}")
         if duplicate_parts:
-            self.errors.append(f"Повторяющиеся разделы: {', '.join(set(duplicate_parts))}")
+            self.errors.append(f"Повторяющиеся главы: {', '.join(set(duplicate_parts))}")
 
     def check_font_size(self):
         expected_size = self.rules["design_rules"]["chapter"]["font_size"]
@@ -59,7 +57,7 @@ class DocxChecker:
         found_fonts = self.parsed_document["fonts"]
 
         for title, font_details in found_fonts.items():
-            if title=='' and font_details['size'] is None:
+            if title == '' and font_details['size'] is None:
                 continue
             else:
                 print(title, font_details['bold'], expected_bold)
@@ -67,6 +65,5 @@ class DocxChecker:
                     self.errors.append(
                         f"Неверный размер шрифта в заголовке '{title}': {font_details['size']} (ожидалось {expected_size})")
                 if expected_bold and font_details["bold"] != expected_bold:
-
                     self.errors.append(
                         f"Неверный стиль шрифта в заголовке '{title}': {font_details['bold']} (ожидалось {expected_bold})")

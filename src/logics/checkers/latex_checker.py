@@ -90,7 +90,7 @@ class LatexChecker:
         for i, (ref_line, uploaded_line) in enumerate(zip(reference_lines, uploaded_lines), start=1):
             if ref_line.strip() != uploaded_line.strip():
                 self.errors.append(
-                    f"Несовпадение в settings.sty на строке {i}: ожидалось '{ref_line.strip()}', получено '{uploaded_line.strip()}'"
+                    f"Несовпадение в settings.sty: ожидалось '{ref_line.strip()}', получено '{uploaded_line.strip()}'"
                 )
 
         if len(uploaded_lines) < len(reference_lines):
@@ -101,4 +101,3 @@ class LatexChecker:
             self.errors.append(
                 f"Файл settings.sty содержит {len(uploaded_lines)} строк, что больше ожидаемых {len(reference_lines)}."
             )
-

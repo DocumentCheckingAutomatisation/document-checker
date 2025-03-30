@@ -1,10 +1,9 @@
 import unittest
+from io import BytesIO
 
 from src.logics.checkers.latex_checker import LatexChecker
 from src.logics.parsers.latex_parser import LatexParser
 from src.settings_manager import SettingsManager
-from unittest.mock import MagicMock
-from io import BytesIO
 
 
 class TestLatexLogics(unittest.TestCase):
@@ -28,7 +27,6 @@ class TestLatexLogics(unittest.TestCase):
         """Тест проверки ключевых слов во введении"""
 
         with open("../docs/main.tex", "rb") as tex_file:
-
             checker = LatexChecker(tex_file, None, "course_work")
 
         checker.check_introduction_keywords()
@@ -48,7 +46,6 @@ class TestLatexLogics(unittest.TestCase):
         print(checker.errors)
 
     def test_check_wrong_sty_file(self):
-
         modified_sty_content = self.reference_sty_content[:]
         if modified_sty_content:
             modified_sty_content[0] = "Неверная строка"
@@ -66,7 +63,7 @@ class TestLatexLogics(unittest.TestCase):
     def test_latex_checking(self):
         """Тест проверки LaTeX-документа"""
 
-        with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
+        with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings1.sty", "rb") as sty_file:
             checker = LatexChecker(tex_file, sty_file, "course_work")
 
         result = checker.check_document()

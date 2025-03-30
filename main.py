@@ -30,12 +30,12 @@ def docs_options():
     return doc_options
 
 
-@app.get("/api/rules/options")
-def rules_options():
-    ObserveService.raise_event(EventType.LOG_DEBUG, "Запрос: /api/rules/options [GET]")
-    result = RuleService.get_rule_types()
-    ObserveService.raise_event(EventType.LOG_INFO, "Список доступных типов правил проверки возвращен")
-    return result
+# @app.get("/api/rules/options")
+# def rules_options():
+#     ObserveService.raise_event(EventType.LOG_DEBUG, "Запрос: /api/rules/options [GET]")
+#     result = RuleService.get_rule_types()
+#     ObserveService.raise_event(EventType.LOG_INFO, "Список доступных типов правил проверки возвращен")
+#     return result
 
 
 @app.get("/api/rules/{doc_type}")
@@ -131,10 +131,11 @@ def validate_document_latex(
         raise HTTPException(status_code=400,
                             detail="Файлы перепутаны местами. Загрузите .tex как tex_file и .sty как sty_file")
 
-    checker = LatexChecker(tex_file.file, sty_file.file, doc_type_enum)
+    checker = LatexChecker(tex_file.file, sty_file.file, doc_type)
     validation_result = checker.check_document()
     ObserveService.raise_event(EventType.LOG_INFO, f"Файлы {tex_file.filename} и {sty_file.filename} успешно проверены")
     return validation_result
+
 
 @app.post("/api/documents/validate/single_file")
 def validate_document_single_file(
@@ -161,7 +162,7 @@ def validate_document_single_file(
         temp_file_path = temp_file.name  # Получаем путь к сохраненному файлу
 
     # Инициализация чекера для .docx файла с путем
-    checker = DocxChecker(temp_file_path, doc_type_enum)
+    checker = DocxChecker(temp_file_path, doc_type)
 
     validation_result = checker.check_document()
     ObserveService.raise_event(EventType.LOG_INFO, f"Файл {file.filename} успешно проверен")
