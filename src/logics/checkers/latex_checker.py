@@ -26,28 +26,30 @@ class LatexChecker:
 
         # Проверка глав
         all_chapters = [ch.lower() for ch in
-                        self.parsed_document["structure"]["numbered_chapters"] + self.parsed_document["structure"][
-                            "unnumbered_chapters"]]
+                        self.parsed_document["structure"]["numbered_chapters"] +
+                        self.parsed_document["structure"]["unnumbered_chapters"]]
 
         for chapter in required_chapters:
             if not any(chapter in parsed_ch for parsed_ch in all_chapters):
                 self.errors.append(f"Отсутствует обязательная глава: {chapter}")
 
         # Проверка разделов
-        all_sections = [
-            sec.lower() for sec in
-            self.parsed_document["structure"]["numbered_sections"] + self.parsed_document["structure"][
-                "unnumbered_sections"]
-        ]
-        print(required_sections.items())
-        print(all_sections)
+        all_numbered_sections = self.parsed_document["structure"].get("numbered_sections", {})
+        all_unnumbered_sections = self.parsed_document["structure"].get("unnumbered_sections", {})
 
         for chapter, sections in required_sections.items():
-            print("chapter", chapter)
-            print("sections", sections)
+            chapter_key = f"{chapter} глава"
+            found_sections = set()
+
+            # Получаем все разделы для данной главы
+            if chapter_key in all_numbered_sections:
+                found_sections.update([sec.lower() for sec in all_numbered_sections[chapter_key]])
+            if chapter_key in all_unnumbered_sections:
+                found_sections.update([sec.lower() for sec in all_unnumbered_sections[chapter_key]])
+
+            # Проверяем наличие необходимых разделов
             for section in sections:
-                print("section", section)
-                if not any(section in parsed_sec for parsed_sec in all_sections):
+                if section.lower() not in found_sections:
                     self.errors.append(f"В главе {chapter} отсутствует раздел: {section}")
 
     def check_introduction_keywords(self):

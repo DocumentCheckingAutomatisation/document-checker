@@ -25,37 +25,50 @@ class LatexParser:
         self.parse_refs()
 
     def parse_structure(self) -> Dict[str, Any]:
-        # Найдем все нумерованные главы и их заголовки
         chapter_titles = re.findall(r'\\chapter\{(.+?)\}', self.tex_content)
         chapters = list(re.finditer(r'\\chapter\{(.+?)\}', self.tex_content))
-
         numbered_chapters_formatted = [f"{i + 1} глава" for i in range(len(chapter_titles))]
 
-        # Найдем все нумерованные разделы с их заголовками и позициями
         sections = list(re.finditer(r'\\section\{(.+?)\}', self.tex_content))
+        unnumbered_sections = list(re.finditer(r'\\section\*\{(.+?)\}', self.tex_content))
 
-        # Сформируем список с номерами разделов, например "1.1 Название раздела"
-        numbered_sections = []
-        chapter_index = 0
+        numbered_sections = {chapter: [] for chapter in numbered_chapters_formatted}
+        unnumbered_sections_dict = {chapter: [] for chapter in numbered_chapters_formatted}
+
+        chapter_index = -1
         section_counter = 0
-
         for section in sections:
             section_title = section.group(1)
             section_pos = section.start()
 
-            # Проверяем, относится ли этот раздел к новой главе
-            while chapter_index < len(chapters) and chapters[chapter_index].start() < section_pos:
+            while chapter_index + 1 < len(chapters) and chapters[chapter_index + 1].start() < section_pos:
                 chapter_index += 1
-                section_counter = 0  # Обнуляем счетчик разделов при переходе к новой главе
+                section_counter = 0
 
-            section_counter += 1
-            numbered_sections.append(f"{chapter_index}.{section_counter} раздел")
+            if chapter_index >= 0:
+                section_counter += 1
+                chapter_name = numbered_chapters_formatted[chapter_index]
+                numbered_sections[chapter_name].append(f"{chapter_index + 1}.{section_counter} раздел")
+
+        for section in unnumbered_sections:
+            section_title = section.group(1)
+            section_pos = section.start()
+
+            chapter_idx = -1
+            for idx, chap in enumerate(chapters):
+                if chap.start() > section_pos:
+                    break
+                chapter_idx = idx
+
+            if chapter_idx >= 0:
+                chapter_name = numbered_chapters_formatted[chapter_idx]
+                unnumbered_sections_dict[chapter_name].append(section_title)
 
         return {
             "numbered_chapters": numbered_chapters_formatted,
             "unnumbered_chapters": re.findall(r'\\chapter\*\{(.+?)\}', self.tex_content),
             "numbered_sections": numbered_sections,
-            "unnumbered_sections": re.findall(r'\\section\*\{(.+?)\}', self.tex_content),
+            "unnumbered_sections": unnumbered_sections_dict,
         }
 
     def parse_title_and_toc(self):
