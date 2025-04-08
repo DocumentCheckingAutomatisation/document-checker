@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from src.core.abstract_logic import AbstractLogic
 from src.core.doc_type import DocType
@@ -9,7 +10,7 @@ from src.core.validator import OperationException
 
 
 class RuleService(AbstractLogic):
-    RULES_PATH = "rules"
+    RULES_PATH = Path(__file__).resolve().parent.parent.parent / "rules"
 
     def __init__(self):
         ObserveService.append(self)
