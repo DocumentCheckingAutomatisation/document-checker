@@ -16,7 +16,8 @@ class LatexParser:
 
     def run_parse(self):
         return {"structure": self.parse_structure(),
-                "introduction": self.parse_introduction()}
+                "introduction": self.parse_introduction(),
+                "lists": self.parse_lists()}
 
     def run_checks(self):
         self.parse_title_and_toc()
@@ -117,12 +118,6 @@ class LatexParser:
                     f"Ошибка: после \\chapter*{{{match.group(1)}}} отсутствует соответствующая команда \\addcontentsline."
                 )
 
-    def parse_counters(self):
-        pass
-
-    def parse_refs(self):
-        pass  # better in checking file
-
     def parse_introduction(self):
         match = re.search(r'\\chapter\*{ВВЕДЕНИЕ}([\s\S]*?)\\chapter', self.tex_content,
                           re.DOTALL | re.IGNORECASE)
@@ -132,3 +127,26 @@ class LatexParser:
 
         introduction_text = match.group(1).lower()
         return introduction_text
+
+    def parse_lists(self):
+        list_types = ['enumarabic', 'enumasbuk', 'enummarker']
+        lists = {list_type: [] for list_type in list_types}
+
+        for list_type in list_types:
+            pattern = rf"(.*?[\.\?!:])?\s*(\\begin\{{{list_type}\}}[\s\S]+?\\end\{{{list_type}\}})"
+            for match in re.finditer(pattern, self.tex_content):
+                before = match.group(1) or ""
+                list_block = match.group(2)
+                full_list = (before + "\n" + list_block).strip()
+                lists[list_type].append(full_list)
+
+        return lists
+
+
+    def parse_counters(self):
+        pass
+
+    def parse_refs(self):
+        pass  # better in checking file
+
+
