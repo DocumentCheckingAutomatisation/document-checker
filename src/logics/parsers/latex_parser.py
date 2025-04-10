@@ -133,7 +133,7 @@ class LatexParser:
         lists = {list_type: [] for list_type in list_types}
 
         for list_type in list_types:
-            pattern = rf"(.*?[\.\?!:])?\s*(\\begin\{{{list_type}\}}[\s\S]+?\\end\{{{list_type}\}})"
+            pattern = rf"(.*?[\.\?!:}}])?\s*(\\begin\{{{list_type}\}}[\s\S]+?\\end\{{{list_type}\}})"
             for match in re.finditer(pattern, self.tex_content):
                 before = match.group(1) or ""
                 list_block = match.group(2)
