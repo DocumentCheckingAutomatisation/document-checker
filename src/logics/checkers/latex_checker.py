@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Dict, Any
 
 from src.core.doc_type import DocType
@@ -103,3 +104,57 @@ class LatexChecker:
             self.errors.append(
                 f"Файл settings.sty содержит {len(uploaded_lines)} строк, что больше ожидаемых {len(reference_lines)}."
             )
+
+    def check_lists(self):
+        lists = self.parsed_document.get("lists", {})
+
+        for list_type, entries in lists.items():
+            for full_list in entries:
+                is_nested = bool(re.search(r"\\begin\{enum[a-z]+\}.*?\\begin\{enum[a-z]+\}", full_list, re.DOTALL))
+                if is_nested:
+                    self.check_nested_list(full_list)
+                else:
+                    self.check_regular_list(full_list)
+
+    def check_regular_list(self, content: str):
+        match_before = re.search(r"(.+?)\\begin\{enum[a-z]+\}", content, re.DOTALL)
+        intro = match_before.group(1).strip() if match_before else ""
+        items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", content, re.DOTALL)
+        items = [item[0].strip() for item in items]
+
+        if not items:
+            return
+
+        intro_end = intro[-1] if intro else ""
+        for i, item in enumerate(items):
+            if intro_end == ":":
+                if not item[0].islower():
+                    self.errors.append(
+                        "Пункт должен начинаться с маленькой буквы (вводная часть заканчивается на ':').")
+                if i < len(items) - 1 and not item.endswith(";"):
+                    self.errors.append("Промежуточный пункт должен оканчиваться на ';'.")
+                if i == len(items) - 1 and not item.endswith("."):
+                    self.errors.append("Последний пункт должен оканчиваться на '.'.")
+            elif intro_end == ".":
+                if not item[0].isupper():
+                    self.errors.append("Пункт должен начинаться с большой буквы (вводная часть заканчивается на '.').")
+                if not item.endswith("."):
+                    self.errors.append("Каждый пункт должен заканчиваться на '.'.")
+
+    def check_nested_list(self, content: str):
+        top_items = re.split(r"\\item", content)
+        for i, top in enumerate(top_items[1:]):
+            top = top.strip()
+            match_intro = re.match(r"(.+?):", top)
+            if not match_intro:
+                self.errors.append("Во вложенном списке каждый верхнеуровневый элемент должен заканчиваться на ':'.")
+                continue
+
+            nested_items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", top, re.DOTALL)
+            nested_items = [item[0].strip() for item in nested_items]
+
+            for j, subitem in enumerate(nested_items):
+                if j < len(nested_items) - 1 and not subitem.endswith(";"):
+                    self.errors.append("Промежуточный пункт вложенного списка должен заканчиваться на ';'.")
+                if j == len(nested_items) - 1 and not subitem.endswith("."):
+                    self.errors.append("Последний пункт вложенного списка должен заканчиваться на '.'.")
