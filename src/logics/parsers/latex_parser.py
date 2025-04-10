@@ -17,7 +17,7 @@ class LatexParser:
     def run_parse(self):
         return {"structure": self.parse_structure(),
                 "introduction": self.parse_introduction(),
-                "lists": self.parse_lists()}
+                "lists": self.parse_lists1()}
 
     def run_checks(self):
         self.parse_title_and_toc()
@@ -128,20 +128,37 @@ class LatexParser:
         introduction_text = match.group(1).lower()
         return introduction_text
 
-    def parse_lists(self):
-        list_types = ['enumarabic', 'enumasbuk', 'enummarker']
+    def parse_lists1(self):
+        list_types = ['enumarabic', 'enumasbuk', 'enummarker'] # +nested maybe
         lists = {list_type: [] for list_type in list_types}
 
+        def find_environment_blocks(content, env_name):
+            pattern = re.compile(rf'\\begin\{{{env_name}\}}|\\end\{{{env_name}\}}')
+            matches = list(pattern.finditer(content))
+            blocks = []
+
+            stack = []
+            for match in matches:
+                if match.group() == f'\\begin{{{env_name}}}':
+                    stack.append(match.start())
+                elif match.group() == f'\\end{{{env_name}}}' and stack:
+                    start = stack.pop()
+                    end = match.end()
+                    block = content[start:end]
+
+                    #before = content[:start].rsplit('.', 1)[-1]
+                    before_match = re.search(r'([^.?!:\n]+[.?!:])\s*$', content[:start])
+                    before_text = before_match.group(1).strip() if before_match else ""
+                    full_block = f"{before_text}\n{block}".strip()
+                    blocks.append(full_block)
+
+            return blocks
+
         for list_type in list_types:
-            pattern = rf"(.*?[\.\?!:}}])?\s*(\\begin\{{{list_type}\}}[\s\S]+?\\end\{{{list_type}\}})"
-            for match in re.finditer(pattern, self.tex_content):
-                before = match.group(1) or ""
-                list_block = match.group(2)
-                full_list = (before + "\n" + list_block).strip()
-                lists[list_type].append(full_list)
+            env_blocks = find_environment_blocks(self.tex_content, list_type)
+            lists[list_type].extend(env_blocks)
 
         return lists
-
 
     def parse_counters(self):
         pass
