@@ -8,12 +8,23 @@ from src.logics.rule_service import RuleService
 
 
 class LatexChecker:
-    def __init__(self, tex_file, sty_file, doc_type: str):
+    def __init__(self, tex_file, sty_file, doc_type: str, deduplicate_errors: bool = True):
         parser = LatexParser(tex_file)
         self.parsed_document = parser.parsed_document
         self.errors = parser.errors
         self.rules = RuleService.load_rules(DocType[doc_type.upper()])
         self.sty_file = self.sty_content = sty_file.read().decode("utf-8").splitlines() if sty_file else []
+
+        self.deduplicate_errors = deduplicate_errors
+        self._error_set = set() if deduplicate_errors else None
+
+    def add_error(self, message: str):
+        if self.deduplicate_errors:
+            if message not in self._error_set:
+                self.errors.append(message)
+                self._error_set.add(message)
+        else:
+            self.errors.append(message)
 
     def check_document(self) -> Dict[str, Any]:
         self.check_structure()
@@ -32,7 +43,7 @@ class LatexChecker:
 
         for chapter in required_chapters:
             if not any(chapter in parsed_ch for parsed_ch in all_chapters):
-                self.errors.append(f"Отсутствует обязательная глава: {chapter}")
+                self.add_error(f"Отсутствует обязательная глава: {chapter}")
 
         # Проверка разделов
         all_numbered_sections = self.parsed_document["structure"].get("numbered_sections", {})
@@ -51,7 +62,7 @@ class LatexChecker:
             # Проверяем наличие необходимых разделов
             for section in sections:
                 if section.lower() not in found_sections:
-                    self.errors.append(f"В главе {chapter} отсутствует раздел: {section}")
+                    self.add_error(f"В главе {chapter} отсутствует раздел: {section}")
 
     def check_introduction_keywords(self):
         introduction_keywords = self.rules["structure_rules"].get("introduction_keywords", [])
@@ -59,8 +70,7 @@ class LatexChecker:
         for keyword in introduction_keywords:
 
             if keyword not in self.parsed_document["introduction"]:
-                print(keyword)
-                self.errors.append(f"Отсутствует ключевое слово во введении: {keyword}")
+                self.add_error(f"Отсутствует ключевое слово во введении: {keyword}")
 
     def check_sty_file(self):
         rules_dir = os.path.join(os.path.dirname(__file__), "../../..", "docs")
@@ -70,13 +80,13 @@ class LatexChecker:
             with open(reference_sty_path, "r", encoding="utf-8") as ref_file:
                 reference_lines = ref_file.readlines()
         except FileNotFoundError:
-            self.errors.append("Файл settings.sty не найден в папке docs.")
+            self.add_error("Файл settings.sty не найден в папке docs.")
             return
 
         uploaded_lines = self.sty_content
 
         if not uploaded_lines:
-            self.errors.append("Файл settings.sty не был загружен или пуст.")
+            self.add_error("Файл settings.sty не был загружен или пуст.")
             return
 
         def remove_comments_and_empty_lines(lines):
@@ -92,16 +102,16 @@ class LatexChecker:
 
         for i, (ref_line, uploaded_line) in enumerate(zip(reference_lines, uploaded_lines), start=1):
             if ref_line.strip() != uploaded_line.strip():
-                self.errors.append(
+                self.add_error(
                     f"Несовпадение в settings.sty: ожидалось '{ref_line.strip()}', получено '{uploaded_line.strip()}'"
                 )
 
         if len(uploaded_lines) < len(reference_lines):
-            self.errors.append(
+            self.add_error(
                 f"Файл settings.sty содержит только {len(uploaded_lines)} строк, ожидалось {len(reference_lines)}."
             )
         elif len(uploaded_lines) > len(reference_lines):
-            self.errors.append(
+            self.add_error(
                 f"Файл settings.sty содержит {len(uploaded_lines)} строк, что больше ожидаемых {len(reference_lines)}."
             )
 
@@ -137,23 +147,23 @@ class LatexChecker:
             item_preview = self.short(item)
             if intro_end == ":":
                 if not item[0].islower():
-                    self.errors.append(
+                    self.add_error(
                         f"Пункт должен начинаться с маленькой буквы (т.к. вводная часть заканчивается на ':') --> '{item_preview}'")
                 if i < len(items) - 1 and not item.endswith(";"):
-                    self.errors.append(
+                    self.add_error(
                         f"Промежуточный пункт должен оканчиваться на ';' --> '{item_preview}'")
                 if i == len(items) - 1 and not item.endswith("."):
-                    self.errors.append(
+                    self.add_error(
                         f"Последний пункт должен оканчиваться на '.' --> '{item_preview}'")
             elif intro_end == ".":
                 if not item[0].isupper():
-                    self.errors.append(
+                    self.add_error(
                         f"Пункт должен начинаться с большой буквы (т.к. вводная часть заканчивается на '.') --> '{item_preview}'")
                 if not item.endswith("."):
-                    self.errors.append(
+                    self.add_error(
                         f"Каждый пункт должен заканчиваться на '.' --> '{item_preview}'")
             else:
-                self.errors.append(
+                self.add_error(
                     f"Вводная часть перед списком должна заканчиваться ':' или '.' --> '{self.short(intro)}'")
 
     def check_nested_list(self, content: str):
@@ -164,7 +174,7 @@ class LatexChecker:
             match_intro = re.match(r"(.+?):", top)
 
             if not match_intro:
-                self.errors.append(
+                self.add_error(
                     f"Во вложенном списке каждый верхнеуровневый элемент должен оканчиваться на ':'"
                     f"Фрагмент: '{self.short(top)}'")
                 continue
@@ -175,8 +185,8 @@ class LatexChecker:
             for j, subitem in enumerate(nested_items):
                 subitem_preview = self.short(subitem)
                 if j < len(nested_items) - 1 and not subitem.endswith(";"):
-                    self.errors.append(
+                    self.add_error(
                         f"Промежуточный пункт вложенного списка должен оканчиваться на ';' --> '{subitem_preview}'")
                 if j == len(nested_items) - 1 and not subitem.endswith("."):
-                    self.errors.append(
+                    self.add_error(
                         f"Последний пункт вложенного списка должен оканчиваться на '.' --> '{subitem_preview}'")
