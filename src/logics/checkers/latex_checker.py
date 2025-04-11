@@ -105,6 +105,11 @@ class LatexChecker:
                 f"Файл settings.sty содержит {len(uploaded_lines)} строк, что больше ожидаемых {len(reference_lines)}."
             )
 
+    @staticmethod
+    def short(item: str, max_len: int = 60) -> str:
+        item = item.replace("\n", " ").strip()
+        return (item[:max_len] + "...") if len(item) > max_len else item
+
     def check_lists(self):
         lists = self.parsed_document.get("lists", {})
 
@@ -117,6 +122,7 @@ class LatexChecker:
                     self.check_regular_list(full_list)
 
     def check_regular_list(self, content: str):
+
         match_before = re.search(r"(.+?)\\begin\{enum[a-z]+\}", content, re.DOTALL)
         intro = match_before.group(1).strip() if match_before else ""
         items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", content, re.DOTALL)
@@ -126,35 +132,51 @@ class LatexChecker:
             return
 
         intro_end = intro[-1] if intro else ""
+
         for i, item in enumerate(items):
+            item_preview = self.short(item)
             if intro_end == ":":
                 if not item[0].islower():
                     self.errors.append(
-                        "Пункт должен начинаться с маленькой буквы (вводная часть заканчивается на ':').")
+                        f"Пункт должен начинаться с маленькой буквы (т.к. вводная часть заканчивается на ':') --> '{item_preview}'")
                 if i < len(items) - 1 and not item.endswith(";"):
-                    self.errors.append("Промежуточный пункт должен оканчиваться на ';'.")
+                    self.errors.append(
+                        f"Промежуточный пункт должен оканчиваться на ';' --> '{item_preview}'")
                 if i == len(items) - 1 and not item.endswith("."):
-                    self.errors.append("Последний пункт должен оканчиваться на '.'.")
+                    self.errors.append(
+                        f"Последний пункт должен оканчиваться на '.' --> '{item_preview}'")
             elif intro_end == ".":
                 if not item[0].isupper():
-                    self.errors.append("Пункт должен начинаться с большой буквы (вводная часть заканчивается на '.').")
+                    self.errors.append(
+                        f"Пункт должен начинаться с большой буквы (т.к. вводная часть заканчивается на '.') --> '{item_preview}'")
                 if not item.endswith("."):
-                    self.errors.append("Каждый пункт должен заканчиваться на '.'.")
+                    self.errors.append(
+                        f"Каждый пункт должен заканчиваться на '.' --> '{item_preview}'")
+            else:
+                self.errors.append(
+                    f"Вводная часть перед списком должна заканчиваться ':' или '.' --> '{self.short(intro)}'")
 
     def check_nested_list(self, content: str):
+
         top_items = re.split(r"\\item", content)
         for i, top in enumerate(top_items[1:]):
             top = top.strip()
             match_intro = re.match(r"(.+?):", top)
+
             if not match_intro:
-                self.errors.append("Во вложенном списке каждый верхнеуровневый элемент должен заканчиваться на ':'.")
+                self.errors.append(
+                    f"Во вложенном списке каждый верхнеуровневый элемент должен оканчиваться на ':'"
+                    f"Фрагмент: '{self.short(top)}'")
                 continue
 
             nested_items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", top, re.DOTALL)
             nested_items = [item[0].strip() for item in nested_items]
 
             for j, subitem in enumerate(nested_items):
+                subitem_preview = self.short(subitem)
                 if j < len(nested_items) - 1 and not subitem.endswith(";"):
-                    self.errors.append("Промежуточный пункт вложенного списка должен заканчиваться на ';'.")
+                    self.errors.append(
+                        f"Промежуточный пункт вложенного списка должен оканчиваться на ';' --> '{subitem_preview}'")
                 if j == len(nested_items) - 1 and not subitem.endswith("."):
-                    self.errors.append("Последний пункт вложенного списка должен заканчиваться на '.'.")
+                    self.errors.append(
+                        f"Последний пункт вложенного списка должен оканчиваться на '.' --> '{subitem_preview}'")

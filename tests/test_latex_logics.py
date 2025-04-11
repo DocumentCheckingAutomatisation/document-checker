@@ -1,5 +1,6 @@
 import unittest
 from io import BytesIO
+from pprint import pprint
 
 from src.logics.checkers.latex_checker import LatexChecker
 from src.logics.parsers.latex_parser import LatexParser
@@ -17,9 +18,9 @@ class TestLatexLogics(unittest.TestCase):
     def test_parse_structure(self):
         with open("../docs/main.tex", "rb") as tex_file:
             parser = LatexParser(tex_file)
-            print(parser.parsed_document)
+            pprint(parser.parsed_document)
             print()
-            print(parser.errors)
+            pprint(parser.errors)
 
         self.assertTrue(parser.parsed_document, "Структура документа не была распарсена")
 
@@ -60,16 +61,36 @@ class TestLatexLogics(unittest.TestCase):
         self.assertTrue(checker.errors, "Ошибки не были найдены при несоответствии .sty файла")
         print(checker.errors)
 
+    def test_latex_check_lists(self):
+        pass
+
+    def test_latex_check_regular_lists(self):
+        with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
+            checker = LatexChecker(tex_file, sty_file, "course_work")
+        checker.errors=[]
+        content = """
+        Перечисление с русскими строчными буквами
+        \\begin{enumasbuk}) 
+        \\item Первый элемент 
+        \\item второй элемент; 
+        \\item третий элемент
+        \\end{enumasbuk}
+        """
+
+        checker.check_regular_list(content)
+
+        pprint(checker.errors)
+
     def test_latex_checking(self):
         """Тест проверки LaTeX-документа"""
 
-        with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings1.sty", "rb") as sty_file:
+        with open("../docs/main1.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
             checker = LatexChecker(tex_file, sty_file, "course_work")
 
         result = checker.check_document()
         print(checker.parsed_document)
         print()
-        print(checker.errors)
+        pprint(checker.errors)
 
         self.assertTrue(result["valid"], "Структура документа не прошла проверку")
 
