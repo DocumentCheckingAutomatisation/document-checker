@@ -17,13 +17,13 @@ class LatexParser:
     def run_parse(self):
         return {"structure": self.parse_structure(),
                 "introduction": self.parse_introduction(),
-                "lists": self.parse_lists1()}
+                "lists": self.parse_lists(),
+                "pics_and_refs": self.parse_pics_and_refs1()}
 
     def run_checks(self):
         self.parse_title_and_toc()
         self.parse_addcontentsline()
         self.parse_counters()
-        self.parse_refs()
 
     def parse_structure(self) -> Dict[str, Any]:
         chapter_titles = re.findall(r'\\chapter\{(.+?)\}', self.tex_content)
@@ -86,14 +86,14 @@ class LatexParser:
             self.parsed_document["structure"]["unnumbered_chapters"].append("титульный лист")
         else:
             print("no title")
-            #self.errors.append("Ошибка: титульный лист не найден или подключен неверной командой.")
+            # self.errors.append("Ошибка: титульный лист не найден или подключен неверной командой.")
 
         # Добавляем содержание в структуру, если найдено
         if toc_match:
             self.parsed_document["structure"]["unnumbered_chapters"].append("содержание")
         else:
             print("no toc")
-            #self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")
+            # self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")
 
         # Проверяем порядок следования команд
         if title_match and begin_match and title_match.start() < begin_match.start():
@@ -128,8 +128,8 @@ class LatexParser:
         introduction_text = match.group(1).lower()
         return introduction_text
 
-    def parse_lists1(self):
-        list_types = ['enumarabic', 'enumasbuk', 'enummarker'] # +nested maybe
+    def parse_lists(self):
+        list_types = ['enumarabic', 'enumasbuk', 'enummarker']  # +nested maybe
         lists = {list_type: [] for list_type in list_types}
 
         def find_environment_blocks(content, env_name):
@@ -146,7 +146,7 @@ class LatexParser:
                     end = match.end()
                     block = content[start:end]
 
-                    #before = content[:start].rsplit('.', 1)[-1]
+                    # before = content[:start].rsplit('.', 1)[-1]
                     before_match = re.search(r'([^.?!:\n]+[.?!:])\s*$', content[:start])
                     before_text = before_match.group(1).strip() if before_match else ""
                     full_block = f"{before_text}\n{block}".strip()
@@ -160,10 +160,54 @@ class LatexParser:
 
         return lists
 
+    def parse_pics_and_refs(self):
+        refs_and_pics = []
+
+        ref_pattern = r'\\ref\{fig:[^}]+\}'
+        myfigure_pattern = r'\\myfigure\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}'
+
+        for ref_match in re.finditer(ref_pattern, self.tex_content):
+            start_pos = ref_match.start()
+
+            myfig_match = re.search(myfigure_pattern, self.tex_content[start_pos:])
+            if myfig_match:
+                end_pos = start_pos + myfig_match.end()
+                fragment = self.tex_content[start_pos:end_pos].strip()
+                refs_and_pics.append(fragment)
+            else:
+                self.errors.append(f"После ссылки {ref_match.group()} не найден соответствующий рисунок \\myfigure.")
+
+        return refs_and_pics
+
+    def parse_pics_and_refs1(self):
+        refs_and_pics = []
+
+        # Шаблоны
+        ref_pattern = r'\\ref\{fig:[^}]+\}'
+        myfigure_pattern = r'\\myfigure\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}'
+        begin_figure_pattern = r'\\begin\{figure\}[\s\S]*?\\end\{figure\}'
+
+        for ref_match in re.finditer(ref_pattern, self.tex_content):
+            start_pos = ref_match.start()
+
+            # Сначала пробуем найти \myfigure
+            myfig_match = re.search(myfigure_pattern, self.tex_content[start_pos:])
+            fig_match = re.search(begin_figure_pattern, self.tex_content[start_pos:])
+
+            # Определим, какой из рисунков идёт раньше
+            if myfig_match and (not fig_match or myfig_match.start() < fig_match.start()):
+                end_pos = start_pos + myfig_match.end()
+                fragment = self.tex_content[start_pos:end_pos].strip()
+                refs_and_pics.append(fragment)
+            elif fig_match:
+                end_pos = start_pos + fig_match.end()
+                fragment = self.tex_content[start_pos:end_pos].strip()
+                refs_and_pics.append(fragment)
+            else:
+                self.errors.append(
+                    f"После ссылки {ref_match.group()} не найден соответствующий рисунок (\\myfigure или figure).")
+
+        return refs_and_pics
+
     def parse_counters(self):
         pass
-
-    def parse_refs(self):
-        pass  # better in checking file
-
-
