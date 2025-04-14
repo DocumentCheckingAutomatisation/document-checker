@@ -18,7 +18,9 @@ class LatexParser:
         return {"structure": self.parse_structure(),
                 "introduction": self.parse_introduction(),
                 "lists": self.parse_lists(),
-                "pics_and_refs": self.parse_pics_and_refs1()}
+                "pics_and_refs": self.parse_pics_and_refs1(),
+                "tables": self.parse_tables(),
+                "long_tables": self.parse_longtables()}
 
     def run_checks(self):
         self.parse_title_and_toc()
@@ -208,6 +210,44 @@ class LatexParser:
                     f"После ссылки {ref_match.group()} не найден соответствующий рисунок (\\myfigure или figure).")
 
         return refs_and_pics
+
+    def parse_tables(self):
+        tables = []
+
+        ref_pattern = r'\\ref\{table:[^}]+\}'
+        table_pattern = r'\\begin\{table\}[\s\S]*?\\end\{table\}'
+
+        for ref_match in re.finditer(ref_pattern, self.tex_content):
+            start_pos = ref_match.start()
+
+            table_match = re.search(table_pattern, self.tex_content[start_pos:])
+            if table_match:
+                end_pos = start_pos + table_match.end()
+                fragment = self.tex_content[start_pos:end_pos].strip()
+                tables.append(fragment)
+            else:
+                self.errors.append(f"После ссылки {ref_match.group()} не найдена соответствующая таблица.")
+
+        return tables
+
+    def parse_longtables(self):
+        longtables = []
+
+        ref_pattern = r'\\ref\{table:[^}]+\}'
+        longtable_pattern = r'\\begin\{longtable\}[\s\S]*?\\end\{longtable\}'
+
+        for ref_match in re.finditer(ref_pattern, self.tex_content):
+            start_pos = ref_match.start()
+
+            longtable_match = re.search(longtable_pattern, self.tex_content[start_pos:])
+            if longtable_match:
+                end_pos = start_pos + longtable_match.end()
+                fragment = self.tex_content[start_pos:end_pos].strip()
+                longtables.append(fragment)
+            else:
+                continue
+
+        return longtables
 
     def parse_counters(self):
         pass
