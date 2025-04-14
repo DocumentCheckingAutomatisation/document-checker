@@ -19,8 +19,7 @@ class LatexParser:
                 "introduction": self.parse_introduction(),
                 "lists": self.parse_lists(),
                 "pics_and_refs": self.parse_pics_and_refs1(),
-                "tables": self.parse_tables(),
-                "long_tables": self.parse_longtables()}
+                "all_tables": self.parse_all_tables()}
 
     def run_checks(self):
         self.parse_title_and_toc()
@@ -211,43 +210,55 @@ class LatexParser:
 
         return refs_and_pics
 
-    def parse_tables(self):
-        tables = []
+    def parse_all_tables(self):
+        all_tables = {
+            "tables": [],
+            "longtables": []
+        }
 
         ref_pattern = r'\\ref\{table:[^}]+\}'
         table_pattern = r'\\begin\{table\}[\s\S]*?\\end\{table\}'
-
-        for ref_match in re.finditer(ref_pattern, self.tex_content):
-            start_pos = ref_match.start()
-
-            table_match = re.search(table_pattern, self.tex_content[start_pos:])
-            if table_match:
-                end_pos = start_pos + table_match.end()
-                fragment = self.tex_content[start_pos:end_pos].strip()
-                tables.append(fragment)
-            else:
-                self.errors.append(f"После ссылки {ref_match.group()} не найдена соответствующая таблица.")
-
-        return tables
-
-    def parse_longtables(self):
-        longtables = []
-
-        ref_pattern = r'\\ref\{table:[^}]+\}'
         longtable_pattern = r'\\begin\{longtable\}[\s\S]*?\\end\{longtable\}'
 
         for ref_match in re.finditer(ref_pattern, self.tex_content):
             start_pos = ref_match.start()
+            table_fragment = None
 
             longtable_match = re.search(longtable_pattern, self.tex_content[start_pos:])
-            if longtable_match:
-                end_pos = start_pos + longtable_match.end()
-                fragment = self.tex_content[start_pos:end_pos].strip()
-                longtables.append(fragment)
-            else:
-                continue
+            table_match = re.search(table_pattern, self.tex_content[start_pos:])
 
-        return longtables
+            # Выбираем тот блок, который встречается раньше
+            if longtable_match and (not table_match or longtable_match.start() < table_match.start()):
+                end_pos = start_pos + longtable_match.end()
+                table_fragment = self.tex_content[start_pos:end_pos].strip()
+                all_tables["longtables"].append(table_fragment)
+            elif table_match:
+                end_pos = start_pos + table_match.end()
+                table_fragment = self.tex_content[start_pos:end_pos].strip()
+                all_tables["tables"].append(table_fragment)
+            else:
+                self.errors.append(
+                    f"После ссылки {ref_match.group()} не найдена соответствующая таблица (\\begin{{table}} или \\begin{{longtable}})."
+                )
+
+        return all_tables
+
+    # def parse_all_tables(self):
+    #     result = {"tables": [], "longtables": []}
+    #
+    #     def extract_tables(env_name):
+    #         pattern = re.compile(rf'\\begin\{{{env_name}\}}[\s\S]*?\\end\{{{env_name}\}}')
+    #         return pattern.findall(self.tex_content)
+    #
+    #     result["tables"] = extract_tables("table")
+    #     result["longtables"] = extract_tables("longtable")
+    #     return result
+    #
+    # def check_duplicate_labels(self):
+    #     labels = re.findall(r'\\label\{([^}]+)\}', self.tex_content)
+    #     duplicates = set(label for label in labels if labels.count(label) > 1)
+    #     for dup in duplicates:
+    #         self.errors.append(f"Дублирующийся label: \\label{{{dup}}} встречается несколько раз.")
 
     def parse_counters(self):
         pass
