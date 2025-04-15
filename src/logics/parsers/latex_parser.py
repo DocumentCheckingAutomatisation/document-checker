@@ -18,7 +18,7 @@ class LatexParser:
         return {"structure": self.parse_structure(),
                 "introduction": self.parse_introduction(),
                 "lists": self.parse_lists(),
-                "pics_and_refs": self.parse_pics_and_refs1(),
+                "pictures": self.parse_pictures(),
                 "all_tables": self.parse_all_tables()}
 
     def run_checks(self):
@@ -161,54 +161,87 @@ class LatexParser:
 
         return lists
 
-    def parse_pics_and_refs(self):
-        refs_and_pics = []
+    def parse_pictures(self):
+        pictures = []
 
-        ref_pattern = r'\\ref\{fig:[^}]+\}'
-        myfigure_pattern = r'\\myfigure\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}'
+        # Шаг 1: Найдём все ссылки на рисунки
+        link_pattern = r"\(рис\.\\ref\{(?P<label>fig:[^}]+)\}\)"
+        links = [
+            {"type": "link", "label": match.group("label"), "pos": match.start()}
+            for match in re.finditer(link_pattern, self.tex_content)
+        ]
 
-        for ref_match in re.finditer(ref_pattern, self.tex_content):
-            start_pos = ref_match.start()
+        # Шаг 2: Найдём все вставки рисунков
+        insertions = []
 
-            myfig_match = re.search(myfigure_pattern, self.tex_content[start_pos:])
-            if myfig_match:
-                end_pos = start_pos + myfig_match.end()
-                fragment = self.tex_content[start_pos:end_pos].strip()
-                refs_and_pics.append(fragment)
-            else:
-                self.errors.append(f"После ссылки {ref_match.group()} не найден соответствующий рисунок \\myfigure.")
+        # Вариант 1: \myfigure{ширина}{файл}{подпись}{label}
+        myfigure_pattern = r"\\myfigure\{.*?\}\{.*?\}\{.*?\}\{(?P<label>[^}]+)\}"
+        for match in re.finditer(myfigure_pattern, self.tex_content):
+            insertions.append({
+                "type": "figure",
+                "label": match.group("label"),
+                "pos": match.start()
+            })
 
-        return refs_and_pics
+        # Вариант 2: \begin{figure}...\label{fig:xxx}...\end{figure}
+        figure_env_pattern = r"\\begin\{figure\}.*?\\label\{(?P<label>fig:[^}]+)\}.*?\\end\{figure\}"
+        for match in re.finditer(figure_env_pattern, self.tex_content, re.DOTALL):
+            insertions.append({
+                "type": "figure",
+                "label": match.group("label"),
+                "pos": match.start()
+            })
 
-    def parse_pics_and_refs1(self):
-        refs_and_pics = []
+        # Шаг 3: Объединяем все объекты и связываем
+        all_items = links + insertions
+        all_items.sort(key=lambda x: x["pos"])
 
-        # Шаблоны
-        ref_pattern = r'\\ref\{fig:[^}]+\}'
-        myfigure_pattern = r'\\myfigure\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}\s*\{[^}]+\}'
-        begin_figure_pattern = r'\\begin\{figure\}[\s\S]*?\\end\{figure\}'
+        used_links = set()
+        used_figures = set()
 
-        for ref_match in re.finditer(ref_pattern, self.tex_content):
-            start_pos = ref_match.start()
+        for i, item in enumerate(all_items):
+            if item["type"] == "link":
+                # ищем ближайший figure с такой же меткой
+                for j in range(i + 1, len(all_items)):
+                    other = all_items[j]
+                    if other["type"] == "figure" and other["label"] == item["label"] and other[
+                        "label"] not in used_figures:
+                        pictures.append({
+                            "label": item["label"],
+                            "link_pos": item["pos"],
+                            "figure_pos": other["pos"],
+                            "distance": other["pos"] - item["pos"]
+                        })
+                        used_links.add(item["label"])
+                        used_figures.add(other["label"])
+                        break
+                else:
+                    # не нашли рисунка
+                    pictures.append({
+                        "label": item["label"],
+                        "link_pos": item["pos"],
+                        "figure_pos": None,
+                        "distance": None
+                    })
 
-            # Сначала пробуем найти \myfigure
-            myfig_match = re.search(myfigure_pattern, self.tex_content[start_pos:])
-            fig_match = re.search(begin_figure_pattern, self.tex_content[start_pos:])
+            elif item["type"] == "figure":
+                if item["label"] not in used_figures:
+                    # ищем ссылку ДО рисунка
+                    for j in range(i - 1, -1, -1):
+                        other = all_items[j]
+                        if other["type"] == "link" and other["label"] == item["label"] and other[
+                            "label"] not in used_links:
+                            break
+                    else:
+                        # не нашли ссылку
+                        pictures.append({
+                            "label": item["label"],
+                            "link_pos": None,
+                            "figure_pos": item["pos"],
+                            "distance": None
+                        })
 
-            # Определим, какой из рисунков идёт раньше
-            if myfig_match and (not fig_match or myfig_match.start() < fig_match.start()):
-                end_pos = start_pos + myfig_match.end()
-                fragment = self.tex_content[start_pos:end_pos].strip()
-                refs_and_pics.append(fragment)
-            elif fig_match:
-                end_pos = start_pos + fig_match.end()
-                fragment = self.tex_content[start_pos:end_pos].strip()
-                refs_and_pics.append(fragment)
-            else:
-                self.errors.append(
-                    f"После ссылки {ref_match.group()} не найден соответствующий рисунок (\\myfigure или figure).")
-
-        return refs_and_pics
+        return pictures
 
     def parse_all_tables(self):
         all_tables = {
