@@ -30,6 +30,7 @@ class LatexChecker:
         self.check_structure()
         self.check_introduction_keywords()
         self.check_sty_file()
+        self.check_pictures()
         return {"valid": not bool(self.errors), "errors": self.errors}
 
     def check_structure(self):
@@ -190,3 +191,26 @@ class LatexChecker:
                 if j == len(nested_items) - 1 and not subitem.endswith("."):
                     self.add_error(
                         f"Последний пункт вложенного списка должен оканчиваться на '.' --> '{subitem_preview}'")
+
+    def check_pictures(self):
+        labels = self.parsed_document["pictures"]["labels"]
+        refs = self.parsed_document["pictures"]["refs"]
+
+        labels_by_name = {lbl["label"]: lbl["position"] for lbl in labels}
+        refs_by_name = {ref["label"]: ref["position"] for ref in refs}
+
+        # Проверка наличия ссылки для каждого рисунка
+        for label, label_pos in labels_by_name.items():
+            if label not in refs_by_name:
+                self.add_error(f"Нет ссылки на рисунок с меткой: {label}")
+
+        # Проверка наличия рисунка для каждой ссылки
+        for ref, ref_pos in refs_by_name.items():
+            if ref not in labels_by_name:
+                self.add_error(f"Нет рисунка с меткой: {ref}")
+            else:
+                label_pos = labels_by_name[ref]
+                if ref_pos > label_pos:
+                    self.add_error(f"Ссылка на рисунок \\ref{{{ref}}} находится после самого рисунка")
+                elif label_pos - ref_pos > 1800:
+                    self.add_error(f"Слишком большое расстояние между ссылкой и рисунком \\ref{{{ref}}}")

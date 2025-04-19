@@ -162,86 +162,38 @@ class LatexParser:
         return lists
 
     def parse_pictures(self):
-        pictures = []
+        return {
+            "labels": self.parse_picture_labels(),
+            "refs": self.parse_picture_refs()
+        }
 
-        # Шаг 1: Найдём все ссылки на рисунки
-        link_pattern = r"\(рис\.\\ref\{(?P<label>fig:[^}]+)\}\)"
-        links = [
-            {"type": "link", "label": match.group("label"), "pos": match.start()}
-            for match in re.finditer(link_pattern, self.tex_content)
-        ]
+    def parse_picture_labels(self):
+        labels = []
 
-        # Шаг 2: Найдём все вставки рисунков
-        insertions = []
-
-        # Вариант 1: \myfigure{ширина}{файл}{подпись}{label}
-        myfigure_pattern = r"\\myfigure\{.*?\}\{.*?\}\{.*?\}\{(?P<label>[^}]+)\}"
-        for match in re.finditer(myfigure_pattern, self.tex_content):
-            insertions.append({
-                "type": "figure",
-                "label": match.group("label"),
-                "pos": match.start()
+        for match in re.finditer(r'\\myfigure\{.*?\}\{.*?\}\{.*?\}\{([^\}]+)\}', self.tex_content):
+            labels.append({
+                "label": match.group(1),
+                "position": match.start()
             })
 
-        # Вариант 2: \begin{figure}...\label{fig:xxx}...\end{figure}
-        figure_env_pattern = r"\\begin\{figure\}.*?\\label\{(?P<label>fig:[^}]+)\}.*?\\end\{figure\}"
-        for match in re.finditer(figure_env_pattern, self.tex_content, re.DOTALL):
-            insertions.append({
-                "type": "figure",
-                "label": match.group("label"),
-                "pos": match.start()
+        for match in re.finditer(r'\\label\{([^\}]+)\}', self.tex_content):
+            labels.append({
+                "label": match.group(1),
+                "position": match.start()
             })
 
-        # Шаг 3: Объединяем все объекты и связываем
-        all_items = links + insertions
-        all_items.sort(key=lambda x: x["pos"])
+        return labels
 
-        used_links = set()
-        used_figures = set()
+    def parse_picture_refs(self):
+        refs = []
 
-        for i, item in enumerate(all_items):
-            if item["type"] == "link":
-                # ищем ближайший figure с такой же меткой
-                for j in range(i + 1, len(all_items)):
-                    other = all_items[j]
-                    if other["type"] == "figure" and other["label"] == item["label"] and other[
-                        "label"] not in used_figures:
-                        pictures.append({
-                            "label": item["label"],
-                            "link_pos": item["pos"],
-                            "figure_pos": other["pos"],
-                            "distance": other["pos"] - item["pos"]
-                        })
-                        used_links.add(item["label"])
-                        used_figures.add(other["label"])
-                        break
-                else:
-                    # не нашли рисунка
-                    pictures.append({
-                        "label": item["label"],
-                        "link_pos": item["pos"],
-                        "figure_pos": None,
-                        "distance": None
-                    })
+        for match in re.finditer(r'\\ref\{fig:([^\}]+)\}', self.tex_content):
+            refs.append({
+                "label": match.group(1),
+                "position": match.start()
+            })
 
-            elif item["type"] == "figure":
-                if item["label"] not in used_figures:
-                    # ищем ссылку ДО рисунка
-                    for j in range(i - 1, -1, -1):
-                        other = all_items[j]
-                        if other["type"] == "link" and other["label"] == item["label"] and other[
-                            "label"] not in used_links:
-                            break
-                    else:
-                        # не нашли ссылку
-                        pictures.append({
-                            "label": item["label"],
-                            "link_pos": None,
-                            "figure_pos": item["pos"],
-                            "distance": None
-                        })
-
-        return pictures
+        return refs
 
     def parse_all_tables(self):
         all_tables = {
