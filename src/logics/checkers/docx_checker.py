@@ -15,7 +15,7 @@ class DocxChecker:
     def check_document(self) -> Dict[str, Any]:
         self.check_structure()
         self.check_font_size()
-        return {"valid": not bool(self.errors), "errors": self.errors}
+        return {"valid": not bool(self.errors), "found": None, "errors": self.errors}
 
     @staticmethod
     def get_parts(annotations, needed_parts):

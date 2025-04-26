@@ -31,7 +31,7 @@ class LatexChecker:
         self.check_introduction_keywords()
         self.check_sty_file()
         self.check_pictures()
-        return {"valid": not bool(self.errors), "errors": self.errors}
+        return {"valid": not bool(self.errors), "found": None, "errors": self.errors}
 
     def check_structure(self):
         required_chapters = self.rules["structure_rules"].get("required_chapters", [])
