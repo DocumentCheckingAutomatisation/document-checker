@@ -7,10 +7,10 @@
 # python cli.py get-rules diploma
 #
 # # Обновить правило
-# python cli.py update-rule diploma margin_top 2cm
+# python cli.py update-rule diploma common_rules.margin.top 20
 #
 # # Обновить для всех типов
-# python cli.py update-rule-all margin_top 2cm
+# python cli.py update-rule-all common_rules.margin.top 20
 #
 # # Проверка DOCX
 # python cli.py validate-docx C:\path\to\file.docx diploma
