@@ -29,6 +29,7 @@ class DocxParser:
         unnumbered_chapters = []
         numbered_sections = []
         unnumbered_sections = []
+        common_text = []
         current_chapter = None
 
         for para in paragraphs:
@@ -48,8 +49,10 @@ class DocxParser:
                     section_info = self.extract_paragraph_info(para)
                     section_info["chapter_number"] = current_chapter
                     unnumbered_sections.append(section_info)
-                else:
+                if ...:
                     unnumbered_chapters.append(self.extract_paragraph_info(para))
+                else:
+                    common_text.append(self.extract_paragraph_info(para))
 
         return {
             "numbered_chapters": numbered_chapters,
