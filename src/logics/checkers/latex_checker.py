@@ -32,6 +32,7 @@ class LatexChecker:
         self.check_sty_file()
         self.check_lists()
         self.check_pictures()
+        self.check_tables()
         return {"valid": not bool(self.errors), "found": None, "errors": self.errors}
 
     def check_structure(self):
@@ -252,4 +253,29 @@ class LatexChecker:
                     self.add_error(f"Ссылка на рисунок \\ref{{{ref}}} находится после самого рисунка")
                 elif label_pos - ref_pos > 1800:
                     self.add_error(
-                        f"Кажется, что между между ссылкой \\ref{{{ref}}} и рисунком слишком большое расстояние. Проверьте, что рисунок расположен не дальше следующей страницы после ссылки")
+                        f"Слишком большое расстояние между ссылкой \\ref{{{ref}}} и таблицей. Убедитесь, что таблица расположена на той же или следующей странице")
+
+    def check_tables(self):
+        for table_type in ["tables", "longtables"]:
+            labels = self.parsed_document[table_type]["labels"]
+            refs = self.parsed_document[table_type]["refs"]
+
+            labels_by_name = {lbl["label"]: lbl["position"] for lbl in labels}
+            refs_by_name = {ref["label"]: ref["position"] for ref in refs}
+
+            # Проверка: на таблицу есть label, но нет ссылки
+            for label, label_pos in labels_by_name.items():
+                if label not in refs_by_name:
+                    self.add_error(f"Нет ссылки на {table_type[:-1]} с меткой: {label}")
+
+            # Проверка: есть ссылка, но нет таблицы с таким label
+            for ref, ref_pos in refs_by_name.items():
+                if ref not in labels_by_name:
+                    self.add_error(f"Нет {table_type[:-1]} с меткой: {ref}")
+                else:
+                    label_pos = labels_by_name[ref]
+                    if ref_pos > label_pos:
+                        self.add_error(f"Ссылка на {table_type[:-1]} \\ref{{{ref}}} находится после самой таблицы")
+                    elif label_pos - ref_pos > 1800:
+                        self.add_error(
+                            f"Слишком большое расстояние между ссылкой \\ref{{{ref}}} и таблицей. Убедитесь, что таблица расположена на той же или следующей странице")
