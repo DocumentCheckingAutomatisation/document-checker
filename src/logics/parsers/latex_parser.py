@@ -170,13 +170,20 @@ class LatexParser:
     def parse_picture_labels(self):
         labels = []
 
-        for match in re.finditer(r'\\myfigure\{.*?\}\{.*?\}\{.*?\}\{([^\}]+)\}', self.tex_content):
-            labels.append({
-                "label": match.group(1),
-                "position": match.start()
-            })
+        # 1. Собираем все \label внутри \begin{figure}...\end{figure}
+        figure_envs = re.finditer(r'\\begin\{figure\}.*?\\end\{figure\}', self.tex_content, re.DOTALL)
+        for env in figure_envs:
+            content = env.group(0)
+            start_pos = env.start()
 
-        for match in re.finditer(r'\\label\{([^\}]+)\}', self.tex_content):
+            for match in re.finditer(r'\\label\{([^\}]+)\}', content):
+                labels.append({
+                    "label": match.group(1),
+                    "position": start_pos + match.start()
+                })
+
+        # 2. Добавляем \label из \myfigure, так как это явно рисунки
+        for match in re.finditer(r'\\myfigure\{.*?\}\{.*?\}\{.*?\}\{([^\}]+)\}', self.tex_content):
             labels.append({
                 "label": match.group(1),
                 "position": match.start()
