@@ -30,6 +30,7 @@ class LatexChecker:
         self.check_structure()
         self.check_introduction_keywords()
         self.check_sty_file()
+        self.check_lists()
         self.check_pictures()
         return {"valid": not bool(self.errors), "found": None, "errors": self.errors}
 
@@ -133,7 +134,6 @@ class LatexChecker:
                     self.check_regular_list(full_list)
 
     def check_regular_list(self, content: str):
-
         match_before = re.search(r"(.+?)\\begin\{enum[a-z]+\}", content, re.DOTALL)
         intro = match_before.group(1).strip() if match_before else ""
         items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", content, re.DOTALL)
@@ -142,7 +142,13 @@ class LatexChecker:
         if not items:
             return
 
-        intro_end = intro[-1] if intro else ""
+        # Удаляем LaTeX-команды и внешние скобки, чтобы определить, чем заканчивается вводная часть
+        clean_intro = re.sub(r"{\\bf\s+([^}]+)}", r"\1", intro)  # {\bf ...} → ...
+        clean_intro = re.sub(r"\\textbf\{([^}]+)\}", r"\1", clean_intro)  # \textbf{...} → ...
+        clean_intro = re.sub(r"\\[a-zA-Z]+\s*", "", clean_intro)  # удалить остальные команды
+        clean_intro = re.sub(r"{|}", "", clean_intro).strip()
+
+        intro_end = clean_intro[-1] if clean_intro else ""
 
         for i, item in enumerate(items):
             item_preview = self.short(item)
@@ -168,18 +174,25 @@ class LatexChecker:
                     f"Вводная часть перед списком должна заканчиваться ':' или '.' --> '{self.short(intro)}'")
 
     def check_nested_list(self, content: str):
-
         top_items = re.split(r"\\item", content)
         for i, top in enumerate(top_items[1:]):
             top = top.strip()
-            match_intro = re.match(r"(.+?):", top)
 
-            if not match_intro:
+            # Очистка от \bf, \textbf, других команд и фигурных скобок
+            clean_top = re.sub(r"{\\bf\s+([^}]+)}", r"\1", top)
+            clean_top = re.sub(r"\\textbf\{([^}]+)\}", r"\1", clean_top)
+            clean_top = re.sub(r"\\[a-zA-Z]+\s*", "", clean_top)
+            clean_top = re.sub(r"{|}", "", clean_top).strip()
+
+            # Проверка окончания верхнего уровня
+            if not clean_top.endswith(":"):
                 self.add_error(
                     f"Во вложенном списке каждый верхнеуровневый элемент должен оканчиваться на ':'"
-                    f"Фрагмент: '{self.short(top)}'")
+                    f" Фрагмент: '{self.short(top)}'"
+                )
                 continue
 
+            # Извлечение вложенных пунктов
             nested_items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", top, re.DOTALL)
             nested_items = [item[0].strip() for item in nested_items]
 
@@ -191,6 +204,31 @@ class LatexChecker:
                 if j == len(nested_items) - 1 and not subitem.endswith("."):
                     self.add_error(
                         f"Последний пункт вложенного списка должен оканчиваться на '.' --> '{subitem_preview}'")
+
+    # def check_nested_list(self, content: str):
+    #
+    #     top_items = re.split(r"\\item", content)
+    #     for i, top in enumerate(top_items[1:]):
+    #         top = top.strip()
+    #         match_intro = re.match(r"(.+?):", top)
+    #
+    #         if not match_intro:
+    #             self.add_error(
+    #                 f"Во вложенном списке каждый верхнеуровневый элемент должен оканчиваться на ':'"
+    #                 f"Фрагмент: '{self.short(top)}'")
+    #             continue
+    #
+    #         nested_items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", top, re.DOTALL)
+    #         nested_items = [item[0].strip() for item in nested_items]
+    #
+    #         for j, subitem in enumerate(nested_items):
+    #             subitem_preview = self.short(subitem)
+    #             if j < len(nested_items) - 1 and not subitem.endswith(";"):
+    #                 self.add_error(
+    #                     f"Промежуточный пункт вложенного списка должен оканчиваться на ';' --> '{subitem_preview}'")
+    #             if j == len(nested_items) - 1 and not subitem.endswith("."):
+    #                 self.add_error(
+    #                     f"Последний пункт вложенного списка должен оканчиваться на '.' --> '{subitem_preview}'")
 
     def check_pictures(self):
         labels = self.parsed_document["pictures"]["labels"]
@@ -213,4 +251,5 @@ class LatexChecker:
                 if ref_pos > label_pos:
                     self.add_error(f"Ссылка на рисунок \\ref{{{ref}}} находится после самого рисунка")
                 elif label_pos - ref_pos > 1800:
-                    self.add_error(f"Слишком большое расстояние между ссылкой и рисунком \\ref{{{ref}}}")
+                    self.add_error(
+                        f"Кажется, что между между ссылкой \\ref{{{ref}}} и рисунком слишком большое расстояние. Проверьте, что рисунок расположен не дальше следующей страницы после ссылки")
