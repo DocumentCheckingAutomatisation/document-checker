@@ -90,7 +90,7 @@ class LatexParser:
 
         # Добавляем содержание в структуру, если найдено
         if toc_match:
-            self.parsed_document["structure"]["unnumbered_chapters"].append("содержание")
+            self.parsed_document["structure"]["unnumbered_chapters"].append("СОДЕРЖАНИЕ")
         else:
             print("no toc")
             # self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")

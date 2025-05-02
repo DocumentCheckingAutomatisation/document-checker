@@ -40,7 +40,7 @@ class LatexChecker:
         required_sections = self.rules["structure_rules"].get("required_sections", {})
 
         # Проверка глав
-        all_chapters = [ch.lower() for ch in
+        all_chapters = [ch for ch in
                         self.parsed_document["structure"]["numbered_chapters"] +
                         self.parsed_document["structure"]["unnumbered_chapters"]]
 
@@ -257,8 +257,8 @@ class LatexChecker:
 
     def check_tables(self):
         for table_type in ["tables", "longtables"]:
-            labels = self.parsed_document[table_type]["labels"]
-            refs = self.parsed_document[table_type]["refs"]
+            labels = self.parsed_document["tables"][table_type]["labels"]
+            refs = self.parsed_document["tables"][table_type]["refs"]
 
             labels_by_name = {lbl["label"]: lbl["position"] for lbl in labels}
             refs_by_name = {ref["label"]: ref["position"] for ref in refs}
