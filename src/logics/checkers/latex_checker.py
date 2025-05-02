@@ -63,9 +63,10 @@ class LatexChecker:
                 found_sections.update([sec.lower() for sec in all_unnumbered_sections[chapter_key]])
 
             # Проверяем наличие необходимых разделов
-            for section in sections:
-                if section.lower() not in found_sections:
-                    self.add_error(f"В главе {chapter} отсутствует раздел: {section}")
+            for required_section in sections:
+                required_section_lower = required_section.lower()
+                if not any(required_section_lower in found for found in found_sections):
+                    self.add_error(f"В главе {chapter} отсутствует раздел: {required_section}")
 
     def check_introduction_keywords(self):
         introduction_keywords = self.rules["structure_rules"].get("introduction_keywords", [])

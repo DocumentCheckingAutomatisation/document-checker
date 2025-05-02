@@ -49,7 +49,7 @@ class LatexParser:
             if chapter_index >= 0:
                 section_counter += 1
                 chapter_name = numbered_chapters_formatted[chapter_index]
-                numbered_sections[chapter_name].append(f"{chapter_index + 1}.{section_counter} раздел")
+                numbered_sections[chapter_name].append(f"{chapter_index + 1}.{section_counter} раздел '{section_title}'")
 
         for section in unnumbered_sections:
             section_title = section.group(1)
@@ -86,14 +86,14 @@ class LatexParser:
             self.parsed_document["structure"]["unnumbered_chapters"].append("титульный лист")
         else:
             print("no title")
-            # self.errors.append("Ошибка: титульный лист не найден или подключен неверной командой.")
+            self.errors.append("Ошибка: титульный лист не найден или подключен неверной командой.")
 
         # Добавляем содержание в структуру, если найдено
         if toc_match:
             self.parsed_document["structure"]["unnumbered_chapters"].append("СОДЕРЖАНИЕ")
         else:
             print("no toc")
-            # self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")
+            self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")
 
         # Проверяем порядок следования команд
         if title_match and begin_match and title_match.start() < begin_match.start():
