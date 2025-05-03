@@ -21,7 +21,7 @@ class LatexParser:
                 "pictures": self.parse_pictures(),
                 "tables": self.parse_all_tables(),
                 "appendices": self.parse_appendices(),
-                "parse_bibliography": self.parse_bibliography()}
+                "bibliography": self.parse_bibliography()}
 
     def run_checks(self):
         self.parse_title_and_toc()

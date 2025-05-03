@@ -33,6 +33,8 @@ class LatexChecker:
         self.check_lists()
         self.check_pictures()
         self.check_tables()
+        self.check_appendices()
+        self.check_bibliography()
         return {"valid": not bool(self.errors), "found": None, "errors": self.errors}
 
     def check_structure(self):
@@ -280,3 +282,33 @@ class LatexChecker:
                     elif label_pos - ref_pos > 1800:
                         self.add_error(
                             f"Слишком большое расстояние между ссылкой \\ref{{{ref}}} и таблицей. Убедитесь, что таблица расположена на той же или следующей странице")
+
+    def check_appendices(self):
+        appendices = self.parsed_document["appendices"]
+        titles_by_letter = {item["letter"]: item for item in appendices["appendix_titles"]}
+        links_by_letter = {link["letter"]: link for link in appendices["appendix_links"]}
+
+        # Проверка: есть приложение, но нет ссылки
+        for letter in titles_by_letter:
+            if letter not in links_by_letter:
+                self.add_error(f"Нет ссылки на приложение {letter}")
+
+        # Проверка: есть ссылка, но нет приложения
+        for letter in links_by_letter:
+            if letter not in titles_by_letter:
+                self.add_error(f"Есть ссылка на несуществующее приложение {letter}")
+
+    def check_bibliography(self):
+        bib_data = self.parsed_document["bibliography"]
+        cited_keys = set(bib_data["cite_keys"])
+        item_keys = {item["key"] for item in bib_data["bibliography_items"]}
+
+        # Есть ссылка \cite, но нет \bibitem
+        for key in cited_keys:
+            if key not in item_keys:
+                self.add_error(f"Есть ссылка \\cite{{{key}}}, но нет элемента библиографии с таким ключом")
+
+        # Есть элемент \bibitem, но нет \cite
+        for key in item_keys:
+            if key not in cited_keys:
+                self.add_error(f"Элемент библиографии с ключом {key} не используется в тексте через \\cite{{{key}}}")
