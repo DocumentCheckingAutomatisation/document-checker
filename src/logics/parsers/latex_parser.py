@@ -123,14 +123,24 @@ class LatexParser:
                 )
 
     def parse_introduction(self):
-        match = re.search(r'\\chapter\*{ВВЕДЕНИЕ}([\s\S]*?)\\chapter', self.tex_content,
-                          re.DOTALL | re.IGNORECASE)
+        # Ищем содержимое главы "ВВЕДЕНИЕ"
+        match = re.search(r'\\chapter\*{ВВЕДЕНИЕ}([\s\S]*?)\\chapter', self.tex_content, re.DOTALL | re.IGNORECASE)
         if not match:
             self.errors.append("Не удалось найти текст введения.")
-            return
+            return []
 
-        introduction_text = match.group(1).lower()
-        return introduction_text
+        introduction_text = match.group(1)
+
+        # Ищем жирные фразы в \textbf{...}
+        bold_phrases = re.findall(r'\\textbf\{([^}]*)\}', introduction_text)
+
+        # Ищем жирные фразы в {\bf ...}
+        bold_phrases += re.findall(r'\{\\bf\s+([^}]*)\}', introduction_text)
+
+        # Удаляем лишние пробелы и фильтруем пустые строки
+        bold_phrases = [phrase.strip() for phrase in bold_phrases if phrase.strip()]
+
+        return bold_phrases
 
     def parse_lists(self):
         list_types = ['enumarabic', 'enumasbuk', 'enummarker']  # +nested maybe
@@ -330,6 +340,24 @@ class LatexParser:
                 "full_title": f"Приложение {letter} {title}".strip()
             })
 
+        # --- Поиск PDF-файлов, включённых через \includepdf ---
+        # Привязываем \includepdf к ближайшему предыдущему приложению
+        pdf_matches = list(re.finditer(r'\\includepdf\[.*?\]\{(.*?)\}', cleaned_text))
+        app_matches = list(re.finditer(r'\\addcontentsline\{toc\}\{section\}\{Приложение\s+([А-Я])', cleaned_text))
+
+        pdf_by_letter = set()
+        for app_match in app_matches:
+            app_letter = app_match.group(1)
+            app_pos = app_match.start()
+            for pdf_match in pdf_matches:
+                if pdf_match.start() > app_pos:
+                    pdf_by_letter.add(app_letter)
+                    break  # Привязываем только первое включение PDF к приложению
+
+        # Добавим информацию в appendix_titles
+        for app in appendix_titles:
+            app["pdf_included"] = app["letter"] in pdf_by_letter
+
         # --- Поиск ссылок на приложения ---
         appendix_links = []
         link_patterns = [
@@ -351,6 +379,53 @@ class LatexParser:
             "appendix_titles": appendix_titles,
             "appendix_links": appendix_links
         }
+
+    # def parse_appendices(self) -> Dict[str, List[Dict[str, str]]]:
+    #     text = self.tex_content
+    #
+    #     # Удалим жирность и похожее форматирование
+    #     cleaned_text = re.sub(r'{\s*\\bf\s+([^}]*)}', r'\1', text)
+    #     cleaned_text = re.sub(r'\\textbf{([^}]*)}', r'\1', cleaned_text)
+    #     cleaned_text = re.sub(r'\\bf\s+', '', cleaned_text)
+    #
+    #     # --- Парсинг заголовков приложений ---
+    #     appendix_titles = []
+    #     title_matches = re.findall(
+    #         r'\\addcontentsline\{toc\}\{section\}\{Приложение\s+([А-Я])(?:\s+([^\}]+))?\}', cleaned_text)
+    #
+    #     seen_letters = set()
+    #     for match in title_matches:
+    #         letter = match[0]
+    #         title = match[1].strip() if match[1] else ''
+    #
+    #         seen_letters.add(letter)
+    #         appendix_titles.append({
+    #             "letter": letter,
+    #             "title": title,
+    #             "full_title": f"Приложение {letter} {title}".strip()
+    #         })
+    #
+    #     # --- Поиск ссылок на приложения ---
+    #     appendix_links = []
+    #     link_patterns = [
+    #         r'\(\s*прил\.?\s*([А-Я])\s*\)',  # (прил. Б)
+    #         r'\bв\s+приложении\s+([А-Я])\b',  # в приложении Б
+    #         r'\bиз\s+приложения\s+([А-Я])\b',  # из приложения Б
+    #         r'\(см\.?\s*прил\.?\s*([А-Я])\)',  # (см. прил. Б)
+    #     ]
+    #
+    #     for pattern in link_patterns:
+    #         for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+    #             letter = match.group(1).upper()
+    #             appendix_links.append({
+    #                 "letter": letter,
+    #                 "raw_text": match.group(0)
+    #             })
+    #
+    #     return {
+    #         "appendix_titles": appendix_titles,
+    #         "appendix_links": appendix_links
+    #     }
 
     def parse_bibliography(self):
         # 1. Найти все ссылки на источники вида \cite{ключ}

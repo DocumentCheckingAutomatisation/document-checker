@@ -35,7 +35,10 @@ class LatexChecker:
         self.check_tables()
         self.check_appendices()
         self.check_bibliography()
-        return {"valid": not bool(self.errors), "found": None, "errors": self.errors}
+
+        found_elements = self.get_found_elements()
+
+        return {"valid": not bool(self.errors), "found": found_elements, "errors": self.errors}
 
     def check_structure(self):
         required_chapters = self.rules["structure_rules"].get("required_chapters", [])
@@ -73,10 +76,12 @@ class LatexChecker:
     def check_introduction_keywords(self):
         introduction_keywords = self.rules["structure_rules"].get("introduction_keywords", [])
 
+        # Приводим жирные фразы к нижнему регистру и убираем двоеточия
+        bold_phrases = [phrase.lower().rstrip(":") for phrase in self.parsed_document.get("introduction", [])]
         for keyword in introduction_keywords:
-
-            if keyword not in self.parsed_document["introduction"]:
-                self.add_error(f"Отсутствует ключевое слово во введении: {keyword}")
+            keyword_clean = keyword.lower().rstrip(":")
+            if all(keyword_clean not in phrase for phrase in bold_phrases):
+                self.add_error(f"Отсутствует ключевое слово во введении, которое должно быть выделено командой жирности {{\\bf}}: {keyword}")
 
     def check_sty_file(self):
         rules_dir = os.path.join(os.path.dirname(__file__), "../../..", "docs")
@@ -289,7 +294,11 @@ class LatexChecker:
         links_by_letter = {link["letter"]: link for link in appendices["appendix_links"]}
 
         # Проверка: есть приложение, но нет ссылки
-        for letter in titles_by_letter:
+        for letter, title in titles_by_letter.items():
+            # Если это приложение А с PDF, пропускаем
+            if letter == "А" and title.get("pdf_included"):
+                self.errors.remove("Отсутствует обязательная глава: ПРИЛОЖЕНИЯ")
+                continue
             if letter not in links_by_letter:
                 self.add_error(f"Нет ссылки на приложение {letter}")
 
@@ -297,6 +306,37 @@ class LatexChecker:
         for letter in links_by_letter:
             if letter not in titles_by_letter:
                 self.add_error(f"Есть ссылка на несуществующее приложение {letter}")
+
+    #
+    # def check_appendices(self):
+    #     appendices = self.parsed_document["appendices"]
+    #     titles_by_letter = {item["letter"]: item for item in appendices["appendix_titles"]}
+    #     links_by_letter = {link["letter"]: link for link in appendices["appendix_links"]}
+    #
+    #     # Проверка: есть приложение, но нет ссылки
+    #     for letter in titles_by_letter:
+    #         if letter not in links_by_letter:
+    #             self.add_error(f"Нет ссылки на приложение {letter}")
+    #
+    #     # Проверка: есть ссылка, но нет приложения
+    #     for letter in links_by_letter:
+    #         if letter not in titles_by_letter:
+    #             self.add_error(f"Есть ссылка на несуществующее приложение {letter}")
+
+        # # Удаление ошибок при типе practice_report
+        # if self.rules.get("doc_type") == "practice_report":
+        #     self.errors = [
+        #         e for e in self.errors
+        #         if e not in [
+        #             "Отсутствует обязательная глава: ПРИЛОЖЕНИЯ",
+        #             "Нет ссылки на приложение А"
+        #         ]
+        #     ]
+        #     if self.deduplicate_errors:
+        #         self._error_set.discard("Отсутствует обязательная глава: ПРИЛОЖЕНИЯ")
+        #         self._error_set.discard("Нет ссылки на приложение А")
+
+
 
     def check_bibliography(self):
         bib_data = self.parsed_document["bibliography"]
@@ -312,3 +352,5 @@ class LatexChecker:
         for key in item_keys:
             if key not in cited_keys:
                 self.add_error(f"Элемент библиографии с ключом {key} не используется в тексте через \\cite{{{key}}}")
+
+
