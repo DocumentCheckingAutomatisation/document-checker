@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 class LatexParser:
@@ -19,11 +19,14 @@ class LatexParser:
                 "introduction": self.parse_introduction(),
                 "lists": self.parse_lists(),
                 "pictures": self.parse_pictures(),
-                "tables": self.parse_all_tables()}
+                "tables": self.parse_all_tables(),
+                "appendices": self.parse_appendices(),
+                "parse_bibliography": self.parse_bibliography()}
 
     def run_checks(self):
         self.parse_title_and_toc()
         self.parse_addcontentsline()
+        self.check_text_formatting_outside_introduction()
 
     def parse_structure(self) -> Dict[str, Any]:
         chapter_titles = re.findall(r'\\chapter\{(.+?)\}', self.tex_content)
@@ -49,7 +52,8 @@ class LatexParser:
             if chapter_index >= 0:
                 section_counter += 1
                 chapter_name = numbered_chapters_formatted[chapter_index]
-                numbered_sections[chapter_name].append(f"{chapter_index + 1}.{section_counter} раздел '{section_title}'")
+                numbered_sections[chapter_name].append(
+                    f"{chapter_index + 1}.{section_counter} раздел '{section_title}'")
 
         for section in unnumbered_sections:
             section_title = section.group(1)
@@ -261,6 +265,115 @@ class LatexParser:
 
         return tables_data
 
+    def check_text_formatting_outside_introduction(self):
+        intro_match = re.search(r'\\chapter\*{ВВЕДЕНИЕ}([\s\S]*?)\\chapter', self.tex_content, re.IGNORECASE)
+        if not intro_match:
+            return
+
+        intro_start = intro_match.start()
+        intro_end = intro_match.end()
+
+        # Исключим блоки с оформлением заголовков приложений (flushright, center)
+        skip_ranges = []
+        for env in ['flushright', 'center']:
+            for match in re.finditer(rf'\\begin\{{{env}\}}([\s\S]*?)\\end\{{{env}\}}', self.tex_content):
+                skip_ranges.append((match.start(), match.end()))
+
+        def in_skipped(pos):
+            return any(start <= pos <= end for start, end in skip_ranges)
+
+        # Форматирование и их типы ошибок
+        patterns = {
+            r'\\textbf\{': ('жирный текст', 'вне введения'),
+            r'\\bf\s*\{': ('жирный текст', 'вне введения'),
+            r'{\\bf\s+': ('жирный текст', 'вне введения'),
+            r'\\textit\{': ('курсив', 'в тексте работы'),
+            r'\\it\s*\{': ('курсив', 'в тексте работы'),
+            r'{\\it\s+': ('курсив', 'в тексте работы'),
+            r'\\underline\{': ('подчёркивание', 'в тексте работы'),
+            r'\\emph\{': ('курсив/выделение', 'в тексте работы')
+        }
+
+        for pattern, (desc, error_scope) in patterns.items():
+            for match in re.finditer(pattern, self.tex_content):
+                pos = match.start()
+                if intro_start <= pos <= intro_end:
+                    continue
+                if in_skipped(pos):
+                    continue
+
+                context = self.tex_content[max(0, pos - 40):pos + 40].replace('\n', ' ')
+                self.errors.append(f"Ошибка: использование команды для '{desc}' {error_scope}: ...{context}...")
+
+    def parse_appendices(self) -> Dict[str, List[Dict[str, str]]]:
+        text = self.tex_content
+
+        # Удалим жирность и похожее форматирование
+        cleaned_text = re.sub(r'{\s*\\bf\s+([^}]*)}', r'\1', text)
+        cleaned_text = re.sub(r'\\textbf{([^}]*)}', r'\1', cleaned_text)
+        cleaned_text = re.sub(r'\\bf\s+', '', cleaned_text)
+
+        # --- Парсинг заголовков приложений ---
+        appendix_titles = []
+        title_matches = re.findall(
+            r'\\addcontentsline\{toc\}\{section\}\{Приложение\s+([А-Я])(?:\s+([^\}]+))?\}', cleaned_text)
+
+        seen_letters = set()
+        for match in title_matches:
+            letter = match[0]
+            title = match[1].strip() if match[1] else ''
+
+            seen_letters.add(letter)
+            appendix_titles.append({
+                "letter": letter,
+                "title": title,
+                "full_title": f"Приложение {letter} {title}".strip()
+            })
+
+        # --- Поиск ссылок на приложения ---
+        appendix_links = []
+        link_patterns = [
+            r'прил\.?\s*([А-Я])',
+            r'в\s+приложении\s+([А-Я])',
+            r'из\s+приложения\s+([А-Я])',
+            r'см\.?\s+прил\.?\s*([А-Я])',
+        ]
+
+        for pattern in link_patterns:
+            for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+                letter = match.group(1).upper()
+                appendix_links.append({
+                    "letter": letter,
+                    "raw_text": match.group(0)
+                })
+
+        return {
+            "appendix_titles": appendix_titles,
+            "appendix_links": appendix_links
+        }
+
+    def parse_bibliography(self):
+        # 1. Найти все ссылки на источники вида \cite{ключ}
+        cite_keys = re.findall(r'\\cite\{(.*?)\}', self.tex_content)
+
+        # 2. Найти блок библиографии
+        bib_match = re.search(r'\\begin{thebibliography}.*?\\end{thebibliography}', self.tex_content, re.DOTALL)
+        bibliography_items = []
+
+        if bib_match:
+            bib_block = bib_match.group(0)
+
+            # 3. Извлечь каждый элемент \bibitem{ключ} текст
+            for match in re.finditer(r'\\bibitem\{(.*?)\}\s*([\s\S]*?)(?=\\bibitem|\Z)', bib_block):
+                key = match.group(1).strip()
+                content = match.group(2).strip().replace('\n', ' ').replace('\\break', '').strip()
+                bibliography_items.append({'key': key, 'text': content})
+
+        return {
+            'cite_keys': cite_keys,
+            'bibliography_items': bibliography_items
+        }
+
     # def parse_all_tables(self):
     #     all_tables = {
     #         "tables": [],
@@ -310,4 +423,3 @@ class LatexParser:
     #     duplicates = set(label for label in labels if labels.count(label) > 1)
     #     for dup in duplicates:
     #         self.errors.append(f"Дублирующийся label: \\label{{{dup}}} встречается несколько раз.")
-
