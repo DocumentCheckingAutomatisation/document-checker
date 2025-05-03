@@ -36,7 +36,7 @@ class LatexChecker:
         self.check_appendices()
         self.check_bibliography()
 
-        return {"valid": not bool(self.errors), "found": self.parsed_document, "errors": self.errors}
+        return {"valid": not bool(self.errors), "found": self.short_parsed_document(self.parsed_document), "errors": self.errors}
 
     def check_structure(self):
         required_chapters = self.rules["structure_rules"].get("required_chapters", [])
@@ -349,3 +349,181 @@ class LatexChecker:
         for key in item_keys:
             if key not in cited_keys:
                 self.add_error(f"Элемент библиографии с ключом {key} не используется в тексте через \\cite{{{key}}}")
+
+    # def short_parsed_document(self, parsed_document: dict) -> dict:
+    #     def truncate(text, length=20):
+    #         return text[:length] + ('...' if len(text) > length else '')
+    #
+    #     def skip_and_truncate(text, skip, limit):
+    #         return text[skip:skip + limit] if len(text) > skip else ""
+    #
+    #     result = {}
+    #
+    #     # Приложения
+    #     if "appendices" in parsed_document:
+    #         appendices = parsed_document["appendices"]
+    #         short_titles = []
+    #         for app in appendices.get("appendix_titles", []):
+    #             short_titles.append({
+    #                 "letter": app["letter"],
+    #                 "title": truncate(app["title"]),
+    #                 "full_title": truncate(app["full_title"]),
+    #                 "pdf_included": app["pdf_included"]
+    #             })
+    #         result["appendices"] = {
+    #             "appendix_links": appendices.get("appendix_links", []),
+    #             "appendix_titles": short_titles
+    #         }
+    #
+    #     # Библиография
+    #     if "bibliography" in parsed_document:
+    #         bib = parsed_document["bibliography"]
+    #         short_bib_items = []
+    #         for item in bib.get("bibliography_items", []):
+    #             short_bib_items.append({
+    #                 "key": item["key"],
+    #                 "text": truncate(item["text"])
+    #             })
+    #         result["bibliography"] = {
+    #             "bibliography_items": short_bib_items,
+    #             "cite_keys": bib.get("cite_keys", [])
+    #         }
+    #
+    #     # Структура
+    #     if "structure" in parsed_document:
+    #         struct = parsed_document["structure"]
+    #         short_numbered_sections = {
+    #             chapter: [truncate(s) for s in sections]
+    #             for chapter, sections in struct.get("numbered_sections", {}).items()
+    #         }
+    #         short_unnumbered_sections = {
+    #             chapter: [truncate(s) for s in sections]
+    #             for chapter, sections in struct.get("unnumbered_sections", {}).items()
+    #         }
+    #         result["structure"] = {
+    #             "numbered_chapters": [truncate(c) for c in struct.get("numbered_chapters", [])],
+    #             "numbered_sections": short_numbered_sections,
+    #             "unnumbered_chapters": [truncate(c) for c in struct.get("unnumbered_chapters", [])],
+    #             "unnumbered_sections": short_unnumbered_sections
+    #         }
+    #
+    #     # Таблицы
+    #     if "tables" in parsed_document:
+    #         tables = parsed_document["tables"]
+    #         short_contents = [{"content": skip_and_truncate(t["content"], 48,20 ), "position": t["position"]}
+    #                           for t in tables.get("tables", {}).get("contents", [])]
+    #         result["tables"] = {
+    #             "tables": {"contents": short_contents},
+    #             "longtables": {
+    #                 "contents": [],
+    #                 "labels": tables.get("longtables", {}).get("labels", []),
+    #                 "refs": tables.get("longtables", {}).get("refs", [])
+    #             }
+    #         }
+    #
+    #     # Списки
+    #     if "lists" in parsed_document:
+    #         lists = parsed_document["lists"]
+    #         result["lists"] = {
+    #             key: [truncate(item) for item in items]
+    #             for key, items in lists.items()
+    #         }
+    #
+    #     return result
+
+    def short_parsed_document(self, parsed_document: dict) -> dict:
+        def truncate(text, length=20):
+            return text[:length] + ('...' if len(text) > length else '')
+
+        def skip_and_truncate(text, skip, limit):
+            return text[skip:skip + limit] if len(text) > skip else ""
+
+        result = {}
+
+        # Приложения
+        if "appendices" in parsed_document:
+            appendices = parsed_document["appendices"]
+            short_titles = []
+            for app in appendices.get("appendix_titles", []):
+                short_titles.append({
+                    "letter": app["letter"],
+                    "title": truncate(app["title"]),
+                    "full_title": truncate(app["full_title"]),
+                    "pdf_included": app["pdf_included"]
+                })
+            result["appendices"] = {
+                "appendix_links": appendices.get("appendix_links", []),
+                "appendix_titles": short_titles
+            }
+
+        # Библиография
+        if "bibliography" in parsed_document:
+            bib = parsed_document["bibliography"]
+            short_bib_items = []
+            for item in bib.get("bibliography_items", []):
+                short_bib_items.append({
+                    "key": item["key"],
+                    "text": truncate(item["text"])
+                })
+            result["bibliography"] = {
+                "bibliography_items": short_bib_items,
+                "cite_keys": bib.get("cite_keys", [])
+            }
+
+        # Структура
+        if "structure" in parsed_document:
+            struct = parsed_document["structure"]
+            short_numbered_sections = {
+                chapter: [truncate(s) for s in sections]
+                for chapter, sections in struct.get("numbered_sections", {}).items()
+            }
+            short_unnumbered_sections = {
+                chapter: [truncate(s) for s in sections]
+                for chapter, sections in struct.get("unnumbered_sections", {}).items()
+            }
+            result["structure"] = {
+                "numbered_chapters": [truncate(c) for c in struct.get("numbered_chapters", [])],
+                "numbered_sections": short_numbered_sections,
+                "unnumbered_chapters": [truncate(c) for c in struct.get("unnumbered_chapters", [])],
+                "unnumbered_sections": short_unnumbered_sections
+            }
+
+        # Таблицы
+        if "tables" in parsed_document:
+            tables = parsed_document["tables"]
+            short_contents = [
+                {"content": skip_and_truncate(t["content"], 48, 20), "position": t["position"]}
+                for t in tables.get("tables", {}).get("contents", [])
+            ]
+            result["tables"] = {
+                "tables": {"contents": short_contents,
+                           "labels": tables.get("tables", {}).get("labels", []),
+                           "refs": tables.get("tables", {}).get("refs", [])},
+                "longtables": {
+                    "contents": [],
+                    "labels": tables.get("longtables", {}).get("labels", []),
+                    "refs": tables.get("longtables", {}).get("refs", [])
+                }
+            }
+
+        # Рисунки
+        if "pictures" in parsed_document:
+            pictures = parsed_document["pictures"]
+            result["pictures"] = {
+                "labels": pictures.get("labels", []),
+                "refs": pictures.get("refs", [])
+            }
+
+        # Списки
+        if "lists" in parsed_document:
+            lists = parsed_document["lists"]
+            result["lists"] = {
+                key: [truncate(item) for item in items]
+                for key, items in lists.items()
+            }
+
+        return result
+
+
+
+
