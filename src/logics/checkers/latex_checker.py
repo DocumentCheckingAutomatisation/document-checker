@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Dict, Any
 
 from src.core.doc_type import DocType
@@ -7,31 +8,49 @@ from src.logics.rule_service import RuleService
 
 
 class LatexChecker:
-    def __init__(self, tex_file, sty_file, doc_type: str):
+    def __init__(self, tex_file, sty_file, doc_type: str, deduplicate_errors: bool = True):
         parser = LatexParser(tex_file)
         self.parsed_document = parser.parsed_document
         self.errors = parser.errors
         self.rules = RuleService.load_rules(DocType[doc_type.upper()])
         self.sty_file = self.sty_content = sty_file.read().decode("utf-8").splitlines() if sty_file else []
 
+        self.deduplicate_errors = deduplicate_errors
+        self._error_set = set() if deduplicate_errors else None
+
+    def add_error(self, message: str):
+        if self.deduplicate_errors:
+            if message not in self._error_set:
+                self.errors.append(message)
+                self._error_set.add(message)
+        else:
+            self.errors.append(message)
+
     def check_document(self) -> Dict[str, Any]:
         self.check_structure()
         self.check_introduction_keywords()
         self.check_sty_file()
-        return {"valid": not bool(self.errors), "errors": self.errors}
+        self.check_lists()
+        self.check_pictures()
+        self.check_tables()
+        self.check_appendices()
+        self.check_bibliography()
+
+        return {"valid": not bool(self.errors), "found": self.short_parsed_document(self.parsed_document),
+                "errors": self.errors}
 
     def check_structure(self):
         required_chapters = self.rules["structure_rules"].get("required_chapters", [])
         required_sections = self.rules["structure_rules"].get("required_sections", {})
 
         # Проверка глав
-        all_chapters = [ch.lower() for ch in
+        all_chapters = [ch for ch in
                         self.parsed_document["structure"]["numbered_chapters"] +
                         self.parsed_document["structure"]["unnumbered_chapters"]]
 
         for chapter in required_chapters:
             if not any(chapter in parsed_ch for parsed_ch in all_chapters):
-                self.errors.append(f"Отсутствует обязательная глава: {chapter}")
+                self.add_error(f"Отсутствует обязательная глава: {chapter}")
 
         # Проверка разделов
         all_numbered_sections = self.parsed_document["structure"].get("numbered_sections", {})
@@ -48,18 +67,21 @@ class LatexChecker:
                 found_sections.update([sec.lower() for sec in all_unnumbered_sections[chapter_key]])
 
             # Проверяем наличие необходимых разделов
-            for section in sections:
-                if section.lower() not in found_sections:
-                    self.errors.append(f"В главе {chapter} отсутствует раздел: {section}")
+            for required_section in sections:
+                required_section_lower = required_section.lower()
+                if not any(required_section_lower in found for found in found_sections):
+                    self.add_error(f"В главе {chapter} отсутствует раздел: {required_section}")
 
     def check_introduction_keywords(self):
         introduction_keywords = self.rules["structure_rules"].get("introduction_keywords", [])
 
+        # Приводим жирные фразы к нижнему регистру и убираем двоеточия
+        bold_phrases = [phrase.lower().rstrip(":") for phrase in self.parsed_document.get("introduction", [])]
         for keyword in introduction_keywords:
-
-            if keyword not in self.parsed_document["introduction"]:
-                print(keyword)
-                self.errors.append(f"Отсутствует ключевое слово во введении: {keyword}")
+            keyword_clean = keyword.lower().rstrip(":")
+            if all(keyword_clean not in phrase for phrase in bold_phrases):
+                self.add_error(
+                    f"Отсутствует ключевое слово во введении, которое должно быть выделено командой жирности {{\\bf}}: {keyword}")
 
     def check_sty_file(self):
         rules_dir = os.path.join(os.path.dirname(__file__), "../../..", "docs")
@@ -69,13 +91,13 @@ class LatexChecker:
             with open(reference_sty_path, "r", encoding="utf-8") as ref_file:
                 reference_lines = ref_file.readlines()
         except FileNotFoundError:
-            self.errors.append("Файл settings.sty не найден в папке docs.")
+            self.add_error("Файл settings.sty не найден в папке docs.")
             return
 
         uploaded_lines = self.sty_content
 
         if not uploaded_lines:
-            self.errors.append("Файл settings.sty не был загружен или пуст.")
+            self.add_error("Файл settings.sty не был загружен или пуст.")
             return
 
         def remove_comments_and_empty_lines(lines):
@@ -91,15 +113,304 @@ class LatexChecker:
 
         for i, (ref_line, uploaded_line) in enumerate(zip(reference_lines, uploaded_lines), start=1):
             if ref_line.strip() != uploaded_line.strip():
-                self.errors.append(
+                self.add_error(
                     f"Несовпадение в settings.sty: ожидалось '{ref_line.strip()}', получено '{uploaded_line.strip()}'"
                 )
 
         if len(uploaded_lines) < len(reference_lines):
-            self.errors.append(
+            self.add_error(
                 f"Файл settings.sty содержит только {len(uploaded_lines)} строк, ожидалось {len(reference_lines)}."
             )
         elif len(uploaded_lines) > len(reference_lines):
-            self.errors.append(
+            self.add_error(
                 f"Файл settings.sty содержит {len(uploaded_lines)} строк, что больше ожидаемых {len(reference_lines)}."
             )
+
+    @staticmethod
+    def short(item: str, max_len: int = 60) -> str:
+        item = item.replace("\n", " ").strip()
+        return (item[:max_len] + "...") if len(item) > max_len else item
+
+    def check_lists(self):
+        lists = self.parsed_document.get("lists", {})
+
+        for list_type, entries in lists.items():
+            for full_list in entries:
+                is_nested = bool(re.search(r"\\begin\{enum[a-z]+\}.*?\\begin\{enum[a-z]+\}", full_list, re.DOTALL))
+                if is_nested:
+                    self.check_nested_list(full_list)
+                else:
+                    self.check_regular_list(full_list)
+
+    def check_regular_list(self, content: str):
+        match_before = re.search(r"(.+?)\\begin\{enum[a-z]+\}", content, re.DOTALL)
+        intro = match_before.group(1).strip() if match_before else ""
+        items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", content, re.DOTALL)
+        items = [item[0].strip() for item in items]
+
+        if not items:
+            return
+
+        # Удаляем LaTeX-команды и внешние скобки, чтобы определить, чем заканчивается вводная часть
+        clean_intro = re.sub(r"{\\bf\s+([^}]+)}", r"\1", intro)  # {\bf ...} → ...
+        clean_intro = re.sub(r"\\textbf\{([^}]+)\}", r"\1", clean_intro)  # \textbf{...} → ...
+        clean_intro = re.sub(r"\\[a-zA-Z]+\s*", "", clean_intro)  # удалить остальные команды
+        clean_intro = re.sub(r"{|}", "", clean_intro).strip()
+
+        intro_end = clean_intro[-1] if clean_intro else ""
+
+        for i, item in enumerate(items):
+            item_preview = self.short(item)
+            if intro_end == ":":
+                if not item[0].islower():
+                    self.add_error(
+                        f"Пункт должен начинаться с маленькой буквы (т.к. вводная часть заканчивается на ':') --> '{item_preview}'")
+                if i < len(items) - 1 and not item.endswith(";"):
+                    self.add_error(
+                        f"Промежуточный пункт должен оканчиваться на ';' --> '{item_preview}'")
+                if i == len(items) - 1 and not item.endswith("."):
+                    self.add_error(
+                        f"Последний пункт должен оканчиваться на '.' --> '{item_preview}'")
+            elif intro_end == ".":
+                if not item[0].isupper():
+                    self.add_error(
+                        f"Пункт должен начинаться с большой буквы (т.к. вводная часть заканчивается на '.') --> '{item_preview}'")
+                if not item.endswith("."):
+                    self.add_error(
+                        f"Каждый пункт должен заканчиваться на '.' --> '{item_preview}'")
+            else:
+                self.add_error(
+                    f"Вводная часть перед списком должна заканчиваться ':' или '.' --> '{self.short(intro)}'")
+
+    def check_nested_list(self, content: str):
+        top_items = re.split(r"\\item", content)
+        for i, top in enumerate(top_items[1:]):
+            top = top.strip()
+
+            # Очистка от \bf, \textbf, других команд и фигурных скобок
+            clean_top = re.sub(r"{\\bf\s+([^}]+)}", r"\1", top)
+            clean_top = re.sub(r"\\textbf\{([^}]+)\}", r"\1", clean_top)
+            clean_top = re.sub(r"\\[a-zA-Z]+\s*", "", clean_top)
+            clean_top = re.sub(r"{|}", "", clean_top).strip()
+
+            # Проверка окончания верхнего уровня
+            if not clean_top.endswith(":"):
+                self.add_error(
+                    f"Во вложенном списке каждый верхнеуровневый элемент должен оканчиваться на ':'"
+                    f" Фрагмент: '{self.short(top)}'"
+                )
+                continue
+
+            # Извлечение вложенных пунктов
+            nested_items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", top, re.DOTALL)
+            nested_items = [item[0].strip() for item in nested_items]
+
+            for j, subitem in enumerate(nested_items):
+                subitem_preview = self.short(subitem)
+                if j < len(nested_items) - 1 and not subitem.endswith(";"):
+                    self.add_error(
+                        f"Промежуточный пункт вложенного списка должен оканчиваться на ';' --> '{subitem_preview}'")
+                if j == len(nested_items) - 1 and not subitem.endswith("."):
+                    self.add_error(
+                        f"Последний пункт вложенного списка должен оканчиваться на '.' --> '{subitem_preview}'")
+
+    # def check_nested_list(self, content: str):
+    #
+    #     top_items = re.split(r"\\item", content)
+    #     for i, top in enumerate(top_items[1:]):
+    #         top = top.strip()
+    #         match_intro = re.match(r"(.+?):", top)
+    #
+    #         if not match_intro:
+    #             self.add_error(
+    #                 f"Во вложенном списке каждый верхнеуровневый элемент должен оканчиваться на ':'"
+    #                 f"Фрагмент: '{self.short(top)}'")
+    #             continue
+    #
+    #         nested_items = re.findall(r"\\item (.+?)(?=(\\item|\\end\{))", top, re.DOTALL)
+    #         nested_items = [item[0].strip() for item in nested_items]
+    #
+    #         for j, subitem in enumerate(nested_items):
+    #             subitem_preview = self.short(subitem)
+    #             if j < len(nested_items) - 1 and not subitem.endswith(";"):
+    #                 self.add_error(
+    #                     f"Промежуточный пункт вложенного списка должен оканчиваться на ';' --> '{subitem_preview}'")
+    #             if j == len(nested_items) - 1 and not subitem.endswith("."):
+    #                 self.add_error(
+    #                     f"Последний пункт вложенного списка должен оканчиваться на '.' --> '{subitem_preview}'")
+
+    def check_pictures(self):
+        labels = self.parsed_document["pictures"]["labels"]
+        refs = self.parsed_document["pictures"]["refs"]
+
+        labels_by_name = {lbl["label"]: lbl["position"] for lbl in labels}
+        refs_by_name = {ref["label"]: ref["position"] for ref in refs}
+
+        # Проверка наличия ссылки для каждого рисунка
+        for label, label_pos in labels_by_name.items():
+            if label not in refs_by_name:
+                self.add_error(f"Нет ссылки на рисунок с меткой: {label}")
+
+        # Проверка наличия рисунка для каждой ссылки
+        for ref, ref_pos in refs_by_name.items():
+            if ref not in labels_by_name:
+                self.add_error(f"Нет рисунка с меткой: {ref}")
+            else:
+                label_pos = labels_by_name[ref]
+                if ref_pos > label_pos:
+                    self.add_error(f"Ссылка на рисунок \\ref{{{ref}}} находится после самого рисунка")
+                elif label_pos - ref_pos > 1800:
+                    self.add_error(
+                        f"Слишком большое расстояние между ссылкой \\ref{{{ref}}} и таблицей. Убедитесь, что таблица расположена на той же или следующей странице")
+
+    def check_tables(self):
+        for table_type in ["tables", "longtables"]:
+            labels = self.parsed_document["tables"][table_type]["labels"]
+            refs = self.parsed_document["tables"][table_type]["refs"]
+
+            labels_by_name = {lbl["label"]: lbl["position"] for lbl in labels}
+            refs_by_name = {ref["label"]: ref["position"] for ref in refs}
+
+            # Проверка: на таблицу есть label, но нет ссылки
+            for label, label_pos in labels_by_name.items():
+                if label not in refs_by_name:
+                    self.add_error(f"Нет ссылки на {table_type[:-1]} с меткой: {label}")
+
+            # Проверка: есть ссылка, но нет таблицы с таким label
+            for ref, ref_pos in refs_by_name.items():
+                if ref not in labels_by_name:
+                    self.add_error(f"Нет {table_type[:-1]} с меткой: {ref}")
+                else:
+                    label_pos = labels_by_name[ref]
+                    if ref_pos > label_pos:
+                        self.add_error(f"Ссылка на {table_type[:-1]} \\ref{{{ref}}} находится после самой таблицы")
+                    elif label_pos - ref_pos > 1800:
+                        self.add_error(
+                            f"Слишком большое расстояние между ссылкой \\ref{{{ref}}} и таблицей. Убедитесь, что таблица расположена на той же или следующей странице")
+
+    def check_appendices(self):
+        appendices = self.parsed_document["appendices"]
+        titles_by_letter = {item["letter"]: item for item in appendices["appendix_titles"]}
+        links_by_letter = {link["letter"]: link for link in appendices["appendix_links"]}
+
+        # Проверка: есть приложение, но нет ссылки
+        for letter, title in titles_by_letter.items():
+            # Если это приложение А с PDF, пропускаем
+            if letter == "А" and title.get("pdf_included"):
+                self.errors.remove("Отсутствует обязательная глава: ПРИЛОЖЕНИЯ")
+                continue
+            if letter not in links_by_letter:
+                self.add_error(f"Нет ссылки на приложение {letter}")
+
+        # Проверка: есть ссылка, но нет приложения
+        for letter in links_by_letter:
+            if letter not in titles_by_letter:
+                self.add_error(f"Есть ссылка на несуществующее приложение {letter}")
+
+    def check_bibliography(self):
+        bib_data = self.parsed_document["bibliography"]
+        cited_keys = set(bib_data["cite_keys"])
+        item_keys = {item["key"] for item in bib_data["bibliography_items"]}
+
+        # Есть ссылка \cite, но нет \bibitem
+        for key in cited_keys:
+            if key not in item_keys:
+                self.add_error(f"Есть ссылка \\cite{{{key}}}, но нет элемента библиографии с таким ключом")
+
+        # Есть элемент \bibitem, но нет \cite
+        for key in item_keys:
+            if key not in cited_keys:
+                self.add_error(f"Элемент библиографии с ключом {key} не используется в тексте через \\cite{{{key}}}")
+
+    def short_parsed_document(self, parsed_document: dict) -> dict:
+        def truncate(text, length=20):
+            return text[:length] + ('...' if len(text) > length else '')
+
+        def skip_and_truncate(text, skip, limit):
+            return text[skip:skip + limit] if len(text) > skip else ""
+
+        result = {}
+
+        # Приложения
+        if "appendices" in parsed_document:
+            appendices = parsed_document["appendices"]
+            short_titles = []
+            for app in appendices.get("appendix_titles", []):
+                short_titles.append({
+                    "letter": app["letter"],
+                    "title": truncate(app["title"]),
+                    "full_title": truncate(app["full_title"]),
+                    "pdf_included": app["pdf_included"]
+                })
+            result["appendices"] = {
+                "appendix_links": appendices.get("appendix_links", []),
+                "appendix_titles": short_titles
+            }
+
+        # Библиография
+        if "bibliography" in parsed_document:
+            bib = parsed_document["bibliography"]
+            short_bib_items = []
+            for item in bib.get("bibliography_items", []):
+                short_bib_items.append({
+                    "key": item["key"],
+                    "text": truncate(item["text"])
+                })
+            result["bibliography"] = {
+                "bibliography_items": short_bib_items,
+                "cite_keys": bib.get("cite_keys", [])
+            }
+
+        # Структура
+        if "structure" in parsed_document:
+            struct = parsed_document["structure"]
+            short_numbered_sections = {
+                chapter: [truncate(s) for s in sections]
+                for chapter, sections in struct.get("numbered_sections", {}).items()
+            }
+            short_unnumbered_sections = {
+                chapter: [truncate(s) for s in sections]
+                for chapter, sections in struct.get("unnumbered_sections", {}).items()
+            }
+            result["structure"] = {
+                "numbered_chapters": [truncate(c) for c in struct.get("numbered_chapters", [])],
+                "numbered_sections": short_numbered_sections,
+                "unnumbered_chapters": [truncate(c) for c in struct.get("unnumbered_chapters", [])],
+                "unnumbered_sections": short_unnumbered_sections
+            }
+
+        # Таблицы
+        if "tables" in parsed_document:
+            tables = parsed_document["tables"]
+            short_contents = [
+                {"content": skip_and_truncate(t["content"], 48, 20), "position": t["position"]}
+                for t in tables.get("tables", {}).get("contents", [])
+            ]
+            result["tables"] = {
+                "tables": {"contents": short_contents,
+                           "labels": tables.get("tables", {}).get("labels", []),
+                           "refs": tables.get("tables", {}).get("refs", [])},
+                "longtables": {
+                    "contents": [],
+                    "labels": tables.get("longtables", {}).get("labels", []),
+                    "refs": tables.get("longtables", {}).get("refs", [])
+                }
+            }
+
+        # Рисунки
+        if "pictures" in parsed_document:
+            pictures = parsed_document["pictures"]
+            result["pictures"] = {
+                "labels": pictures.get("labels", []),
+                "refs": pictures.get("refs", [])
+            }
+
+        # Списки
+        if "lists" in parsed_document:
+            lists = parsed_document["lists"]
+            result["lists"] = {
+                key: [truncate(item) for item in items]
+                for key, items in lists.items()
+            }
+
+        return result
