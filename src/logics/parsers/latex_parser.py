@@ -380,53 +380,6 @@ class LatexParser:
             "appendix_links": appendix_links
         }
 
-    # def parse_appendices(self) -> Dict[str, List[Dict[str, str]]]:
-    #     text = self.tex_content
-    #
-    #     # Удалим жирность и похожее форматирование
-    #     cleaned_text = re.sub(r'{\s*\\bf\s+([^}]*)}', r'\1', text)
-    #     cleaned_text = re.sub(r'\\textbf{([^}]*)}', r'\1', cleaned_text)
-    #     cleaned_text = re.sub(r'\\bf\s+', '', cleaned_text)
-    #
-    #     # --- Парсинг заголовков приложений ---
-    #     appendix_titles = []
-    #     title_matches = re.findall(
-    #         r'\\addcontentsline\{toc\}\{section\}\{Приложение\s+([А-Я])(?:\s+([^\}]+))?\}', cleaned_text)
-    #
-    #     seen_letters = set()
-    #     for match in title_matches:
-    #         letter = match[0]
-    #         title = match[1].strip() if match[1] else ''
-    #
-    #         seen_letters.add(letter)
-    #         appendix_titles.append({
-    #             "letter": letter,
-    #             "title": title,
-    #             "full_title": f"Приложение {letter} {title}".strip()
-    #         })
-    #
-    #     # --- Поиск ссылок на приложения ---
-    #     appendix_links = []
-    #     link_patterns = [
-    #         r'\(\s*прил\.?\s*([А-Я])\s*\)',  # (прил. Б)
-    #         r'\bв\s+приложении\s+([А-Я])\b',  # в приложении Б
-    #         r'\bиз\s+приложения\s+([А-Я])\b',  # из приложения Б
-    #         r'\(см\.?\s*прил\.?\s*([А-Я])\)',  # (см. прил. Б)
-    #     ]
-    #
-    #     for pattern in link_patterns:
-    #         for match in re.finditer(pattern, text, flags=re.IGNORECASE):
-    #             letter = match.group(1).upper()
-    #             appendix_links.append({
-    #                 "letter": letter,
-    #                 "raw_text": match.group(0)
-    #             })
-    #
-    #     return {
-    #         "appendix_titles": appendix_titles,
-    #         "appendix_links": appendix_links
-    #     }
-
     def parse_bibliography(self):
         # 1. Найти все ссылки на источники вида \cite{ключ}
         cite_keys = re.findall(r'\\cite\{(.*?)\}', self.tex_content)
@@ -448,53 +401,3 @@ class LatexParser:
             'cite_keys': cite_keys,
             'bibliography_items': bibliography_items
         }
-
-    # def parse_all_tables(self):
-    #     all_tables = {
-    #         "tables": [],
-    #         "longtables": []
-    #     }
-    #
-    #     ref_pattern = r'\\ref\{table:[^}]+\}'
-    #     table_pattern = r'\\begin\{table\}[\s\S]*?\\end\{table\}'
-    #     longtable_pattern = r'\\begin\{longtable\}[\s\S]*?\\end\{longtable\}'
-    #
-    #     for ref_match in re.finditer(ref_pattern, self.tex_content):
-    #         start_pos = ref_match.start()
-    #         table_fragment = None
-    #
-    #         longtable_match = re.search(longtable_pattern, self.tex_content[start_pos:])
-    #         table_match = re.search(table_pattern, self.tex_content[start_pos:])
-    #
-    #         # Выбираем тот блок, который встречается раньше
-    #         if longtable_match and (not table_match or longtable_match.start() < table_match.start()):
-    #             end_pos = start_pos + longtable_match.end()
-    #             table_fragment = self.tex_content[start_pos:end_pos].strip()
-    #             all_tables["longtables"].append(table_fragment)
-    #         elif table_match:
-    #             end_pos = start_pos + table_match.end()
-    #             table_fragment = self.tex_content[start_pos:end_pos].strip()
-    #             all_tables["tables"].append(table_fragment)
-    #         else:
-    #             self.errors.append(
-    #                 f"После ссылки {ref_match.group()} не найдена соответствующая таблица (\\begin{{table}} или \\begin{{longtable}})."
-    #             )
-    #
-    #     return all_tables
-
-    # def parse_all_tables(self):
-    #     result = {"tables": [], "longtables": []}
-    #
-    #     def extract_tables(env_name):
-    #         pattern = re.compile(rf'\\begin\{{{env_name}\}}[\s\S]*?\\end\{{{env_name}\}}')
-    #         return pattern.findall(self.tex_content)
-    #
-    #     result["tables"] = extract_tables("table")
-    #     result["longtables"] = extract_tables("longtable")
-    #     return result
-    #
-    # def check_duplicate_labels(self):
-    #     labels = re.findall(r'\\label\{([^}]+)\}', self.tex_content)
-    #     duplicates = set(label for label in labels if labels.count(label) > 1)
-    #     for dup in duplicates:
-    #         self.errors.append(f"Дублирующийся label: \\label{{{dup}}} встречается несколько раз.")

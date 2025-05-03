@@ -16,9 +16,9 @@ class TestLatexLogics(unittest.TestCase):
             self.reference_sty_content = f.read().decode("utf-8").splitlines()
 
     def test_parse_structure(self):
-        with open("../docs/main.tex", "rb") as tex_file:
+        with open("../docs/my.tex", "rb") as tex_file:
             parser = LatexParser(tex_file)
-            pprint(parser.parsed_document)
+            pprint(parser.parsed_document["lists"])
             print()
             pprint(parser.errors)
 
@@ -67,7 +67,7 @@ class TestLatexLogics(unittest.TestCase):
     def test_latex_check_regular_lists(self):
         with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
             checker = LatexChecker(tex_file, sty_file, "course_work")
-        checker.errors=[]
+        checker.errors = []
         content = """
         Перечисление с русскими строчными буквами
         \\begin{enumasbuk}) 
@@ -84,13 +84,14 @@ class TestLatexLogics(unittest.TestCase):
     def test_latex_checking(self):
         """Тест проверки LaTeX-документа"""
 
-        with open("../docs/main1.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
-            checker = LatexChecker(tex_file, sty_file, "course_work")
+        with open("../docs/f.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
+            checker = LatexChecker(tex_file, sty_file, "diploma")
 
         result = checker.check_document()
-        print(checker.parsed_document)
+        # pprint(checker.parsed_document)
         print()
         pprint(checker.errors)
+
 
         self.assertTrue(result["valid"], "Структура документа не прошла проверку")
 

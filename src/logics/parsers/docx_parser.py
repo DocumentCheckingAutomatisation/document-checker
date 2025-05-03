@@ -127,7 +127,8 @@ class DocxParser:
             "font_color": self.get_font_color(run),
             "line_spacing": paragraphs[0].paragraph_format.line_spacing,
             "alignment": paragraphs[0].alignment.name if paragraphs[0].alignment else None,
-            "left_indent": paragraphs[0].paragraph_format.left_indent.pt if paragraphs[0].paragraph_format.left_indent else None,
+            "left_indent": paragraphs[0].paragraph_format.left_indent.pt if paragraphs[
+                0].paragraph_format.left_indent else None,
             "bold": run.bold,
             "uppercase": [r.text.isupper() for r in text_runs],
             "italic": run.italic,
@@ -162,10 +163,32 @@ class DocxParser:
         return tables
 
     def parse_pictures(self, doc: Document) -> List[Dict[str, Any]]:
-        """ Заглушка для парсинга картинок (без dedoc не получится обработать корректно) """
-        pictures = []
-        # Здесь можно позже интегрировать dedoc attachments для реального парсинга картинок
-        return pictures
+        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        picture_references = []
+        picture_captions = []
+
+        for i, text in enumerate(paragraphs):
+            # Ищем ссылки типа "(Рис. 4)"
+            refs = re.findall(r"\(Рис\.\s*\d+\)", text)
+            for ref in refs:
+                picture_references.append({
+                    "ref_text": ref,
+                    "paragraph": text
+                })
+
+            # Ищем подписи типа "Рисунок 4 – описание"
+            match = re.match(r"^Рисунок\s+(\d+)\s*[-–—]\s*(.+)", text)
+            if match:
+                picture_captions.append({
+                    "figure_number": match.group(1),
+                    "caption": match.group(2),
+                    "full_text": text
+                })
+
+        return {
+            "references": picture_references,
+            "captions": picture_captions
+        }
 
     def parse_lit_links(self, doc: Document) -> List[str]:
         """ Нахождение ссылок на литературу типа [1], [2] и т.д. """
@@ -175,8 +198,6 @@ class DocxParser:
             refs = re.findall(r"\[\d+\]", para.text)
             references.extend(refs)
         return list(set(references))
-
-
 
 # import re
 # from typing import Dict, Any, List
