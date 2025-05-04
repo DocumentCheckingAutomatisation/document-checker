@@ -219,7 +219,7 @@ class DocxParser:
                     picture_references.append({
                         "ref_text": match.group(0),
                         "ref_number": match.group(1),
-                        "paragraph": text
+                        #"paragraph": text
                     })
 
             match = re.match(caption_pattern, text)
@@ -256,7 +256,7 @@ class DocxParser:
                     table_references.append({
                         "ref_text": match.group(0),
                         "ref_number": match.group(1),
-                        "paragraph": text
+                        #"paragraph": text
                     })
 
         for i in range(len(paragraphs) - 1):

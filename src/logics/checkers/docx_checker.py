@@ -33,7 +33,7 @@ class DocxChecker:
         self.check_appendices()
         self.check_bibliography()
         self.check_font_size()
-        return {"valid": not bool(self.errors), "found": None, "errors": self.errors}
+        return {"valid": not bool(self.errors), "found": self.short_parsed_document(self.parsed_document), "errors": self.errors}
 
     def check_structure(self) -> None:
         structure = self.parsed_document["structure"]
@@ -209,6 +209,93 @@ class DocxChecker:
 
         root = self.serialized_document["content"]["structure"]
         recursive_check(root)
+
+    def short_parsed_document(self, parsed_document: dict) -> dict:
+        def truncate(text, length=20):
+            return text[:length] + ('...' if len(text) > length else '')
+
+        result = {}
+
+        # Структура
+        if "structure" in parsed_document:
+            struct = parsed_document["structure"]
+            result["structure"] = {
+                "numbered_chapters": [
+                    {
+                        "formatted_title": truncate(c.get("formatted_title", "")),
+                        "text": truncate(c.get("formatted_title", ""))  # text = formatted_title
+                    }
+                    for c in struct.get("numbered_chapters", [])
+                ],
+                "unnumbered_chapters": [
+                    {
+                        "text": truncate(c.get("content", ""))
+                    }
+                    for c in struct.get("unnumbered_chapters", [])
+                ]
+            }
+
+        # Введение: ключевые слова
+        if "bold_intro_words" in parsed_document:
+            result["bold_intro_words"] = [truncate(w) for w in parsed_document["bold_intro_words"]]
+
+        # Списки
+        if "lists" in parsed_document:
+            lists = parsed_document["lists"]
+            result["lists"] = {
+                # key: [truncate(item) for item in items]
+                # for key, items in lists.items()
+            }
+
+        # Рисунки
+        if "pictures" in parsed_document:
+            pictures = parsed_document["pictures"]
+            result["pictures"] = [
+                # {
+                #     "caption": truncate(pic.get("captions", [{}])[0].get("full_text", "")),
+                #
+                #     "ref": " / ".join([truncate(ref.get("ref_text", "")) for ref in pic.get("references", [])])
+                #
+                # }
+                # for pic in pictures.get('captions', [])
+            ]
+
+        # Таблицы
+        if "tables" in parsed_document:
+            tables = parsed_document["tables"]
+            result["tables"] = [
+                # {
+                #     "caption": truncate(table.get("captions", {}).get("raw_text", "")),
+                #     "ref": truncate(table.get("references", {}).get("ref_text", ""))
+                # }
+                # for table in tables if isinstance(table, dict)
+            ]
+
+        # Приложения
+        if "appendices" in parsed_document:
+            appendices = parsed_document["appendices"]
+            result["appendices"] = {
+                "titles": [truncate(a.get("raw_text", "")) for a in appendices.get("titles", [])],
+                "links": [
+                    truncate(ref.get("ref_text", ""))
+                    for ref in appendices.get("references", [])
+                    if isinstance(ref, dict) and "ref_text" in ref
+                ]
+            }
+
+        # Библиография
+        if "bibliography" in parsed_document:
+            bib = parsed_document["bibliography"]
+            result["bibliography"] = {
+                "items": [
+                    truncate(entry.get("content", ""))
+                    for entry in bib.get("bibliography", [])
+                    if isinstance(entry, dict)
+                ],
+                "cite_keys": bib.get("references_in_text", [])
+            }
+
+        return result
 
     # @staticmethod
     # def get_parts(annotations, needed_parts):
