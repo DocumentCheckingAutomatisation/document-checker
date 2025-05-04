@@ -1,6 +1,9 @@
 import re
 from typing import Dict, Any, List, Optional
+
+from dedoc import DedocManager
 from docx import Document
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import RGBColor
 
 
@@ -9,6 +12,13 @@ class DocxParser:
         self.docx_file_path = docx_file_path
         self.errors = []
         self.parsed_document = self.run_parse()
+        self.serialised_document = self.init_dedoc()
+
+    def init_dedoc(self):
+        manager = DedocManager()
+        result = manager.parse(self.docx_file_path, {"document_type": "diploma"})
+        serialised_doc = result.to_api_schema().model_dump()
+        return serialised_doc
 
     def run_parse(self) -> Dict[str, Any]:
         doc = Document(self.docx_file_path)
@@ -226,9 +236,39 @@ class DocxParser:
             "captions": picture_captions
         }
 
-    def parse_tables(self, doc: Document) -> List[Dict[str, Any]]:
-        """ Парсинг таблиц: содержимое ячеек """
+    def parse_tables(self, doc: Document) -> Dict[str, List[Dict[str, Any]]]:
+        paragraphs = [p for p in doc.paragraphs if p.text.strip()]
+        table_references = []
+        table_captions = []
         tables = []
+
+        reference_patterns = [
+            (r"\(табл\.?\s*(\d+)\)", re.IGNORECASE),  # (табл. 1)
+            (r"\(см\.?\s*табл\.?\s*(\d+)\)", re.IGNORECASE),  # (см. табл. 1)
+            (r"в\s+таблице\s+(\d+)", re.IGNORECASE),  # в таблице 1
+            (r"из\s+таблицы\s+(\d+)", re.IGNORECASE),  # из таблицы 1
+        ]
+
+        for para in paragraphs:
+            text = para.text.strip()
+            for pattern, flags in reference_patterns:
+                for match in re.finditer(pattern, text, flags=flags):
+                    table_references.append({
+                        "ref_text": match.group(0),
+                        "ref_number": match.group(1),
+                        "paragraph": text
+                    })
+
+        for i in range(len(paragraphs) - 1):
+            current = paragraphs[i]
+            next_para = paragraphs[i + 1]
+            if re.match(r"Таблица\s+\d+", current.text.strip(), re.IGNORECASE):
+                if current.alignment == WD_PARAGRAPH_ALIGNMENT.RIGHT and next_para.alignment == WD_PARAGRAPH_ALIGNMENT.CENTER:
+                    table_captions.append({
+                        "table_number": re.findall(r"\d+", current.text)[0],
+                        "title": next_para.text.strip(),
+                        "raw_text": f"{current.text.strip()} / {next_para.text.strip()}"
+                    })
 
         for table in doc.tables:
             table_data = []
@@ -237,10 +277,11 @@ class DocxParser:
                 table_data.append(row_data)
             tables.append({"table": table_data})
 
-        return tables
-
-    def parse_appendices(self):
-        pass
+        return {
+            "references": table_references,
+            "captions": table_captions,
+            "tables": tables
+        }
 
     def parse_bibliography(self, doc: Document) -> Dict[str, Any]:
         references = set()
@@ -278,6 +319,49 @@ class DocxParser:
         return {
             "references_in_text": list(references),
             "bibliography": bibliography_items
+        }
+
+    def parse_appendices(self) -> Dict[str, List[Dict[str, str]]]:
+        doc = Document(self.docx_file_path)
+        paragraphs = [p for p in doc.paragraphs if p.text.strip()]
+        appendix_references = []
+        appendix_titles = []
+
+        # Ссылки на приложения в тексте
+        reference_patterns = [
+            (r"\(прил\.?\s*([А-ЯA-Z])\)", re.IGNORECASE),  # (прил. А)
+            (r"\(см\.?\s*прил\.?\s*([А-ЯA-Z])\)", re.IGNORECASE),  # (см. прил. А)
+            (r"в\s+приложении\s+([А-ЯA-Z])", re.IGNORECASE),  # в приложении А
+            (r"из\s+приложения\s+([А-ЯA-Z])", re.IGNORECASE),  # из приложения А
+        ]
+
+        for para in paragraphs:
+            text = para.text.strip()
+            for pattern, flags in reference_patterns:
+                for match in re.finditer(pattern, text, flags=flags):
+                    appendix_references.append({
+                        "ref_text": match.group(0),
+                        "ref_letter": match.group(1).upper(),
+                        "paragraph": text
+                    })
+
+        # Названия приложений
+        for i in range(len(paragraphs) - 1):
+            current = paragraphs[i]
+            next_para = paragraphs[i + 1]
+            match = re.match(r"Приложение\s+([А-ЯA-Z])", current.text.strip(), re.IGNORECASE)
+
+            if match:
+                if current.alignment == WD_PARAGRAPH_ALIGNMENT.RIGHT and next_para.alignment == WD_PARAGRAPH_ALIGNMENT.CENTER:
+                    appendix_titles.append({
+                        "appendix_letter": match.group(1).upper(),
+                        "title": next_para.text.strip(),
+                        "raw_text": f"{current.text.strip()} / {next_para.text.strip()}"
+                    })
+
+        return {
+            "references": appendix_references,
+            "titles": appendix_titles
         }
 
 # import re
