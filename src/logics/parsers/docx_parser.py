@@ -16,53 +16,73 @@ class DocxParser:
         return {
             "structure": self.parse_structure(doc),
             "bold_intro_words": self.parse_intro(doc),
-            "text": self.parse_text(doc),
+            # "text": self.parse_text(doc),
             "lists": self.parse_lists(doc),
-            "tables": self.parse_tables(doc),
             "pictures": self.parse_pictures(doc),
-            "literature_links": self.parse_lit_links(doc)
+            "tables": self.parse_tables(doc),
+            "appendices": self.parse_appendices(),
+            "bibliography": self.parse_bibliography(doc)
         }
 
     def parse_structure(self, doc: Document) -> Dict[str, Any]:
         paragraphs = [p for p in doc.paragraphs if p.text.strip()]
         numbered_chapters = []
         unnumbered_chapters = []
-        numbered_sections = []
-        unnumbered_sections = []
+        sections = []
         common_text = []
         current_chapter = None
 
         for para in paragraphs:
             text = para.text.strip()
 
-            # Заголовки глав и разделов
-            if re.match(r"^\d+(\.\d+)?", text):  # Нумерованные
-                if re.match(r"^\d+\s", text):  # Глава (например, "1 Глава")
-                    numbered_chapters.append(self.extract_paragraph_info(para))
-                    current_chapter = text.split()[0]
-                elif re.match(r"^\d+\.\d+", text):  # Раздел (например, "1.1 Текст")
+            # Нумерованные заголовки
+            if re.match(r"^\d+(\.\d+)?", text):
+                if re.match(r"^\d+\s", text):  # Глава, например "1 Введение"
+                    parts = text.split(maxsplit=1)
+                    chapter_number = parts[0]
+                    chapter_title = parts[1] if len(parts) > 1 else ""
+                    formatted_title = f"{chapter_number} глава '{chapter_title}'"
+
+                    para_info = self.extract_paragraph_info(para)
+                    para_info["formatted_title"] = formatted_title
+                    numbered_chapters.append(para_info)
+
+                    current_chapter = chapter_number
+
+                elif re.match(r"^\d+\.\d+", text):  # Раздел, например "1.1 Название"
                     section_info = self.extract_paragraph_info(para)
                     section_info["chapter_number"] = current_chapter
-                    numbered_sections.append(section_info)
+                    sections.append(section_info)
+
             else:  # Ненумерованные
-                if "выводы по главе" in text.lower():
+                lowered = text.lower()
+                if "выводы по главе" in lowered:
                     section_info = self.extract_paragraph_info(para)
                     section_info["chapter_number"] = current_chapter
-                    unnumbered_sections.append(section_info)
-                if ...:
+                    sections.append(section_info)
+
+                elif "технико-экономическое обоснование" in lowered:
+                    section_info = self.extract_paragraph_info(para)
+                    section_info["chapter_number"] = current_chapter
+                    sections.append(section_info)
+
+
+                elif (text.isupper()
+                      and not re.search(r"[.:;!?–—-]$", text)
+                      and not re.search(r"[–—-]", text)):
                     unnumbered_chapters.append(self.extract_paragraph_info(para))
                 else:
+                    # Простой абзац
                     common_text.append(self.extract_paragraph_info(para))
 
         return {
             "numbered_chapters": numbered_chapters,
             "unnumbered_chapters": unnumbered_chapters,
-            "numbered_sections": numbered_sections,
-            "unnumbered_sections": unnumbered_sections
+            "sections": sections,
+            "common_text": common_text
         }
 
     def extract_paragraph_info(self, para) -> Dict[str, Any]:
-        """ Извлекает информацию о стиле оформления абзаца """
         run = para.runs[0] if para.runs else None
         return {
             "content": para.text.strip(),
@@ -103,51 +123,108 @@ class DocxParser:
 
         return bold_words
 
-    def parse_text(self, doc: Document) -> Dict[str, Any]:
-        """ Парсинг обычного текста документа (не заголовков глав/разделов) """
-        paragraphs = [p for p in doc.paragraphs if p.text.strip()]
-        text_runs = []
-
-        for para in paragraphs:
-            if not re.match(r"^\d+(\.\d+)?", para.text.strip()) and "выводы по главе" not in para.text.lower():
-                for run in para.runs:
-                    if run.text.strip():
-                        text_runs.append(run)
-
-        if not text_runs:
-            return {}
-
-        # Пробуем взять первый значащий run как эталон
-        run = text_runs[0]
-
-        return {
-            "content": "\n".join([run.text for run in text_runs]),
-            "font_size": run.font.size.pt if run.font.size else None,
-            "font_name": run.font.name,
-            "font_color": self.get_font_color(run),
-            "line_spacing": paragraphs[0].paragraph_format.line_spacing,
-            "alignment": paragraphs[0].alignment.name if paragraphs[0].alignment else None,
-            "left_indent": paragraphs[0].paragraph_format.left_indent.pt if paragraphs[
-                0].paragraph_format.left_indent else None,
-            "bold": run.bold,
-            "uppercase": [r.text.isupper() for r in text_runs],
-            "italic": run.italic,
-            "underline": run.underline
-        }
-
     def parse_lists(self, doc: Document) -> List[Dict[str, Any]]:
-        """ Парсинг списков: находим абзацы с bullets или нумерацией """
         lists = []
-        paragraphs = [p for p in doc.paragraphs if p.text.strip()]
+        current_list = None
+        intro_candidate = None
 
-        for para in paragraphs:
-            if para.style.name.lower().startswith("list") or para.style.name.lower().startswith("bullet"):
-                lists.append({
-                    "list_item": para.text.strip(),
-                    "font_size": para.runs[0].font.size.pt if para.runs and para.runs[0].font.size else None
-                })
+        for para in doc.paragraphs:
+            text = para.text.strip()
+            if not text:
+                continue
+
+
+            numbered_match = re.match(r"^(\d+)[\.\)]\s+(.+)", text)
+
+            bulleted_match = re.match(r"^[•\-–—]\s+(.+)", text)
+
+            if numbered_match:
+                item = {
+                    "type": "numbered",
+                    "number": int(numbered_match.group(1)),
+                    "text": numbered_match.group(2),
+                    "full": text
+                }
+
+                if current_list is None:
+                    current_list = {
+                        "type": "numbered",
+                        "intro": intro_candidate,
+                        "items": [item]
+                    }
+                else:
+                    current_list["items"].append(item)
+                continue
+
+            elif bulleted_match:
+                item = {
+                    "type": "bulleted",
+                    "text": bulleted_match.group(1),
+                    "full": text
+                }
+
+                if current_list is None:
+                    current_list = {
+                        "type": "bulleted",
+                        "intro": intro_candidate,
+                        "items": [item]
+                    }
+                else:
+                    current_list["items"].append(item)
+                continue
+
+            else:
+                if current_list:
+                    lists.append(current_list)
+                    current_list = None
+
+                if text.endswith(":") or text.endswith("."):
+                    intro_candidate = text
+                else:
+                    intro_candidate = None
+
+        if current_list:
+            lists.append(current_list)
 
         return lists
+
+    def parse_pictures(self, doc: Document) -> Dict[str, List[Dict[str, str]]]:
+        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        picture_references = []
+        picture_captions = []
+
+        # Пары "паттерн — флаг захвата номера рисунка"
+        reference_patterns = [
+            (r"\(рис\.?\s*(\d+)\)", re.IGNORECASE),  # (Рис. 4)
+            (r"\(см\.?\s*рис\.?\s*(\d+)\)", re.IGNORECASE),  # (см. рис. 4)
+            (r"на\s+рисунке\s+(\d+)", re.IGNORECASE),  # на рисунке 4
+        ]
+
+        caption_pattern = r"^Рисунок\s+(\d+)\s*([-–—])\s*(.+)"
+
+        for i, text in enumerate(paragraphs):
+            # Поиск ссылок
+            for pattern, flags in reference_patterns:
+                for match in re.finditer(pattern, text, flags=flags):
+                    picture_references.append({
+                        "ref_text": match.group(0),
+                        "ref_number": match.group(1),
+                        "paragraph": text
+                    })
+
+            match = re.match(caption_pattern, text)
+            if match:
+                picture_captions.append({
+                    "figure_number": match.group(1),
+                    "dash": match.group(2),
+                    "caption": match.group(3),
+                    "full_text": text
+                })
+
+        return {
+            "references": picture_references,
+            "captions": picture_captions
+        }
 
     def parse_tables(self, doc: Document) -> List[Dict[str, Any]]:
         """ Парсинг таблиц: содержимое ячеек """
@@ -162,42 +239,46 @@ class DocxParser:
 
         return tables
 
-    def parse_pictures(self, doc: Document) -> List[Dict[str, Any]]:
+    def parse_appendices(self):
+        pass
+
+    def parse_bibliography(self, doc: Document) -> Dict[str, Any]:
+        references = set()
+        bibliography_items = []
         paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-        picture_references = []
-        picture_captions = []
 
-        for i, text in enumerate(paragraphs):
-            # Ищем ссылки типа "(Рис. 4)"
-            refs = re.findall(r"\(Рис\.\s*\d+\)", text)
-            for ref in refs:
-                picture_references.append({
-                    "ref_text": ref,
-                    "paragraph": text
-                })
+        in_bibliography = False
+        counter = 1
 
-            # Ищем подписи типа "Рисунок 4 – описание"
-            match = re.match(r"^Рисунок\s+(\d+)\s*[-–—]\s*(.+)", text)
-            if match:
-                picture_captions.append({
-                    "figure_number": match.group(1),
-                    "caption": match.group(2),
-                    "full_text": text
+        for para in paragraphs:
+            # Сбор ссылок вида [1], [2]
+            refs = re.findall(r"\[\d+\]", para)
+            references.update(refs)
+
+            lowered = para.lower()
+
+            # Запуск сбора библиографии
+            if not in_bibliography and "список использованных источников" in lowered:
+                in_bibliography = True
+                continue
+
+            # Сбор элементов библиографии
+            if in_bibliography:
+                if para == para.upper():  # Новый заголовок = выход
+                    in_bibliography = False
+                    continue
+
+                number = para[0] if para and para[0].isdigit() else None
+                bibliography_items.append({
+                    "number": counter,
+                    "content": para
                 })
+                counter += 1
 
         return {
-            "references": picture_references,
-            "captions": picture_captions
+            "references_in_text": list(references),
+            "bibliography": bibliography_items
         }
-
-    def parse_lit_links(self, doc: Document) -> List[str]:
-        """ Нахождение ссылок на литературу типа [1], [2] и т.д. """
-        references = []
-        paragraphs = [p for p in doc.paragraphs if p.text.strip()]
-        for para in paragraphs:
-            refs = re.findall(r"\[\d+\]", para.text)
-            references.extend(refs)
-        return list(set(references))
 
 # import re
 # from typing import Dict, Any, List
