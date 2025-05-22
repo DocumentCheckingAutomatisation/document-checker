@@ -1,7 +1,7 @@
 {
   "common_rules": {
     "font": "Times New Roman",
-    "font_size": 14,
+    "font_size": 14.0,
     "line_spacing": 1.5,
     "paragraph_indent": 1.25,
     "margins": {
@@ -45,7 +45,7 @@
       "предмет",
       "цель",
       "задачи",
-      "новизна",
+      "новизн",
       "практическая значимость"
     ],
     "numbering": {
