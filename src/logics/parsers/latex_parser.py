@@ -27,6 +27,7 @@ class LatexParser:
         self.parse_title_and_toc()
         self.parse_addcontentsline()
         self.check_text_formatting_outside_introduction()
+        self.check_quotes_usage()
 
     def parse_structure(self) -> Dict[str, Any]:
         chapter_titles = re.findall(r'\\chapter\{(.+?)\}', self.tex_content)
@@ -401,3 +402,40 @@ class LatexParser:
             'cite_keys': cite_keys,
             'bibliography_items': bibliography_items
         }
+
+    def check_quotes_usage(self):
+        """
+        Проверяет, что в тексте используются только допустимые виды кавычек:
+        1. «...» (русские елочки)
+        2. <<...>> (альтернативные елочки)
+        3. «„...”» (вложенные лапки внутри елочек)
+        Все остальные виды кавычек считаются ошибочными.
+        """
+        allowed_patterns = [
+            r'«[^«»„“”"\'<<>>]*?»',               # простые елочки
+            r'<<[^«»„“”"\'<<>>]*?>>',             # альтернативные елочки
+            r'«[^«»„“”"\'<<>>]*?„[^«»„“”"\'<<>>]+?“[^«»„“”"\'<<>>]*?»',               # вложенные лапки в елочках
+            r'<<[^«»„“”"\'<<>>]*?„[^«»„“”"\'<<>>]+?“[^«»„“”"\'<<>>]*?>>',
+        ]
+
+        # Объединяем допустимые шаблоны
+        allowed_combined = "|".join(f"({p})" for p in allowed_patterns)
+        allowed_regex = re.compile(allowed_combined)
+
+        # Удалим все допустимые кавычки
+        clean_text = re.sub(allowed_regex, '', self.tex_content)
+
+        disallowed_patterns = [
+            r'"[^"]+?"',         # английские двойные
+            r"'[^']+?'",         # английские одинарные
+            r'“[^”]+?”',         # типографские двойные
+            r'”[^“]+?“',         # перевернутые типографские
+            r'„[^“]+?“',         # немецкие кавычки без внешних елочек
+            r'“[^„]+?“',         # вложенные без внешних
+        ]
+
+        for pattern in disallowed_patterns:
+            for match in re.finditer(pattern, clean_text):
+                context = self.tex_content[max(0, match.start()-20):match.end()+20]
+                self.errors.append(f"Найдены недопустимые кавычки --> ...{match.group()}. Разрешены «...» и вложенные «„...“».")
+
