@@ -335,30 +335,16 @@ class LatexChecker:
         # Приложения
         if "appendices" in parsed_document:
             appendices = parsed_document["appendices"]
-            short_titles = []
-            for app in appendices.get("appendix_titles", []):
-                short_titles.append({
-                    "letter": app["letter"],
-                    "title": truncate(app["title"]),
-                    "full_title": truncate(app["full_title"]),
-                    "pdf_included": app["pdf_included"]
-                })
             result["appendices"] = {
-                "appendix_links": appendices.get("appendix_links", []),
-                "appendix_titles": short_titles
+                "refs": [item.get("raw_text", "") for item in appendices.get("appendix_links", [])],
+                "titles": [truncate(item.get("full_title", "")) for item in appendices.get("appendix_titles", [])]
             }
 
         # Библиография
         if "bibliography" in parsed_document:
             bib = parsed_document["bibliography"]
-            short_bib_items = []
-            for item in bib.get("bibliography_items", []):
-                short_bib_items.append({
-                    "key": item["key"],
-                    "text": truncate(item["text"])
-                })
             result["bibliography"] = {
-                "bibliography_items": short_bib_items,
+                "bibliography_items": [item.get("key", "") for item in bib.get("bibliography_items", [])],
                 "cite_keys": bib.get("cite_keys", [])
             }
 
