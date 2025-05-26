@@ -143,7 +143,6 @@ class DocxParser:
             if not text:
                 continue
 
-
             numbered_match = re.match(r"^(\d+)[\.\)]\s+(.+)", text)
 
             bulleted_match = re.match(r"^[•\-–—]\s+(.+)", text)
@@ -219,7 +218,7 @@ class DocxParser:
                     picture_references.append({
                         "ref_text": match.group(0),
                         "ref_number": match.group(1),
-                        #"paragraph": text
+                        # "paragraph": text
                     })
 
             match = re.match(caption_pattern, text)
@@ -256,7 +255,7 @@ class DocxParser:
                     table_references.append({
                         "ref_text": match.group(0),
                         "ref_number": match.group(1),
-                        #"paragraph": text
+                        # "paragraph": text
                     })
 
         for i in range(len(paragraphs) - 1):

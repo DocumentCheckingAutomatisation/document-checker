@@ -33,7 +33,8 @@ class DocxChecker:
         self.check_appendices()
         self.check_bibliography()
         self.check_font_size()
-        return {"valid": not bool(self.errors), "found": self.short_parsed_document(self.parsed_document), "errors": self.errors}
+        return {"valid": not bool(self.errors), "found": self.short_parsed_document(self.parsed_document),
+                "errors": self.errors}
 
     def check_structure(self) -> None:
         structure = self.parsed_document["structure"]
@@ -42,7 +43,8 @@ class DocxChecker:
 
         # Соберём все главы (названия), как из нумерованных, так и ненумерованных
         numbered_chapters = [chapter["formatted_title"].lower() for chapter in structure.get("numbered_chapters", [])]
-        unnumbered_chapters = [chapter["content"].strip().lower() for chapter in structure.get("unnumbered_chapters", [])]
+        unnumbered_chapters = [chapter["content"].strip().lower() for chapter in
+                               structure.get("unnumbered_chapters", [])]
         all_chapters = numbered_chapters + unnumbered_chapters
 
         # Проверка обязательных глав
@@ -64,7 +66,7 @@ class DocxChecker:
             for sect in required_sects:
                 sect_lower = sect.lower()
                 if not any(sect_lower in s for s in chapter_sections):
-                    self.add_error(f"В главе {chapter_num} отсутствует обязательный раздел: '{sect}'")
+                    self.add_error(f"В главе {chapter_num} не найден обязательный раздел: '{sect}'")
 
         self.errors.remove("Отсутствует обязательная глава: 'титульный лист'")
         self.errors.remove("В главе 1 отсутствует обязательный раздел: '1.1 раздел'")
@@ -78,7 +80,8 @@ class DocxChecker:
 
         for keyword in introduction_keywords:
             if not any(keyword in word for word in bold_intro_words):
-                self.add_error(f"Во введении не найдено ключевое слово или словосочетание: '{keyword}'. Убедитесь, что оно у вас есть.")
+                self.add_error(
+                    f"Во введении не найдено ключевое слово или словосочетание: '{keyword}'. Убедитесь, что оно у вас есть.")
 
     def check_pictures(self) -> None:
         pictures = self.parsed_document.get("pictures", {})
@@ -91,20 +94,21 @@ class DocxChecker:
         # Проверка на ссылки без подписей
         for num in ref_numbers:
             if num not in caption_numbers:
-                self.add_error(f"Есть ссылка на рисунок {num}, но подпись к нему не найдена. Проверьте оформление подписи.")
+                self.add_error(
+                    f"Есть ссылка на рисунок {num}, но подпись к нему не найдена. Проверьте оформление подписи.")
 
         # Проверка на подписи без ссылок
         for caption in captions:
             num = caption["figure_number"]
             if num not in ref_numbers:
-                self.add_error(f"Есть подпись к рисунку {num}, но ссылка на него в тексте отсутствует. Проверьте оформление ссылки.")
+                self.add_error(
+                    f"Есть подпись к рисунку {num}, но ссылка на него в тексте отсутствует. Проверьте оформление ссылки.")
 
-            # # Проверка использования длинного тире
-            # if caption["dash"] != "—":
-            #     self.add_error(
-            #         f"В подписи к рисунку {num} используется символ тире: '{caption['dash']}'. "
-            #         f"Следует использовать длинное тире '—' (U+2014)."
-            #     )
+            # Проверка использования длинного тире
+            if caption["dash"] != "—":
+                self.add_error(
+                    f"В подписи к рисунку {num} используется символ тире: '{caption['dash']}'. Следует использовать длинное тире '—' (U+2014)."
+                )
 
     def check_tables(self) -> None:
         tables = self.parsed_document.get("tables", {})
@@ -117,14 +121,15 @@ class DocxChecker:
         # Проверка на ссылки без подписей
         for num in ref_numbers:
             if num not in caption_numbers:
-                self.add_error(f"Есть ссылка на таблицу {num}, но подпись к ней не найдена. Проверьте оформление подписи.")
+                self.add_error(
+                    f"Есть ссылка на таблицу {num}, но подпись к ней не найдена. Проверьте оформление подписи.")
 
         # Проверка на подписи без ссылок
         for caption in captions:
             num = caption["table_number"]
             if num not in ref_numbers:
-                self.add_error(f"Есть подпись к таблице {num}, но ссылка на неё в тексте отсутствует. Проверьте оформление ссылки.")
-
+                self.add_error(
+                    f"Есть подпись к таблице {num}, но ссылка на неё в тексте отсутствует. Проверьте оформление ссылки.")
 
     def check_bibliography(self) -> None:
         biblio = self.parsed_document.get("bibliography", {})
@@ -163,25 +168,6 @@ class DocxChecker:
                 title_text = title_info.get("title", "").lower()
                 if "ежедневные записи студента" not in title_text:
                     self.add_error(f"Приложение {letter} присутствует, но ссылка на него в тексте отсутствует.")
-
-    # def check_font_size(self):
-    #     expected_size = str(self.rules["common_rules"]["font_size"])
-    #
-    #     def _check_node(node, path=""):
-    #         node_text = node.get("text", "")
-    #         for annotation in node.get("annotations", []):
-    #             if annotation.get("name") == "size":
-    #                 actual_size = annotation.get("value")
-    #                 if actual_size != expected_size:
-    #                     snippet = node_text[annotation["start"]:annotation["end"]]
-    #                     self.add_error(
-    #                         f"Некорректный размер шрифта: '{snippet}' (ожидался: {expected_size}, найден: {actual_size})"
-    #                     )
-    #         for sub_node in node.get("subparagraphs", []):
-    #             _check_node(sub_node)
-    #
-    #     root = self.serialized_document["content"]["structure"]
-    #     _check_node(root)
 
     def check_font_size(self):
         expected_size = str(self.rules["common_rules"]["font_size"])
@@ -249,49 +235,33 @@ class DocxChecker:
 
         # Рисунки
         if "pictures" in parsed_document:
-            pictures = parsed_document["pictures"]
-            result["pictures"] = [
-                # {
-                #     "caption": truncate(pic.get("captions", [{}])[0].get("full_text", "")),
-                #
-                #     "ref": " / ".join([truncate(ref.get("ref_text", "")) for ref in pic.get("references", [])])
-                #
-                # }
-                # for pic in pictures.get('captions', [])
-            ]
+            pictures = parsed_document.get("pictures", {})
+            result["pictures"] = {
+                "caption": [truncate(item.get("full_text", "")) for item in pictures.get("captions", [])],
+                "ref": [item.get("ref_text", "") for item in pictures.get("references", [])]
+            }
 
         # Таблицы
         if "tables" in parsed_document:
             tables = parsed_document["tables"]
-            result["tables"] = [
-                # {
-                #     "caption": truncate(table.get("captions", {}).get("raw_text", "")),
-                #     "ref": truncate(table.get("references", {}).get("ref_text", ""))
-                # }
-                # for table in tables if isinstance(table, dict)
-            ]
+            result["tables"] = {
+                "caption": [truncate(item.get("raw_text", "")) for item in tables.get("captions", [])],
+                "ref": [item.get("ref_text", "") for item in tables.get("references", [])]
+            }
 
         # Приложения
         if "appendices" in parsed_document:
             appendices = parsed_document["appendices"]
             result["appendices"] = {
-                "titles": [truncate(a.get("raw_text", "")) for a in appendices.get("titles", [])],
-                "links": [
-                    truncate(ref.get("ref_text", ""))
-                    for ref in appendices.get("references", [])
-                    if isinstance(ref, dict) and "ref_text" in ref
-                ]
+                "title": [truncate(item.get("raw_text", "")) for item in appendices.get("titles", [])],
+                "ref": [item.get("ref_text", "") for item in appendices.get("references", [])]
             }
 
         # Библиография
         if "bibliography" in parsed_document:
             bib = parsed_document["bibliography"]
             result["bibliography"] = {
-                "items": [
-                    truncate(entry.get("content", ""))
-                    for entry in bib.get("bibliography", [])
-                    if isinstance(entry, dict)
-                ],
+                "items": [truncate(item.get("content", ""), 25) for item in bib.get("bibliography", [])],
                 "cite_keys": bib.get("references_in_text", [])
             }
 
