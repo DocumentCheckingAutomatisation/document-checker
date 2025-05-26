@@ -10,7 +10,6 @@ from docx.shared import RGBColor
 class DocxParser:
     def __init__(self, docx_file_path: str):
         self.docx_file_path = docx_file_path
-        self.errors = []
         self.parsed_document = self.run_parse()
         self.serialised_document = self.init_dedoc()
 
@@ -292,7 +291,7 @@ class DocxParser:
 
         for para in paragraphs:
             # Сбор ссылок вида [1], [2]
-            refs = re.findall(r"\[\d+\]", para)
+            refs = re.findall(r"\[\d{1,2}\]", para)
             references.update(refs)
 
             lowered = para.lower()
