@@ -90,24 +90,24 @@ class LatexParser:
             self.parsed_document["structure"]["unnumbered_chapters"].append("титульный лист")
         else:
             print("no title")
-            self.errors.append("Ошибка: титульный лист не найден или подключен неверной командой.")
+            self.errors.append("Титульный лист не найден или подключен неверной командой.")
 
         # Добавляем содержание в структуру, если найдено
         if toc_match:
             self.parsed_document["structure"]["unnumbered_chapters"].append("СОДЕРЖАНИЕ")
         else:
             print("no toc")
-            self.errors.append("Ошибка: отсутствует \\tableofcontents после титульного листа.")
+            self.errors.append("Отсутствует \\tableofcontents после титульного листа.")
 
         # Проверяем порядок следования команд
         if title_match and begin_match and title_match.start() < begin_match.start():
-            self.errors.append("Ошибка: титульный лист должен подключаться после \\begin{document}.")
+            self.errors.append("Титульный лист должен подключаться после \\begin{document}.")
         if title_match and toc_match:
             between_text = self.tex_content[title_match.end():toc_match.start()]
             allowed_text = re.sub(r'%.+?\n', '', between_text).strip()
             if allowed_text and allowed_text != "\\setcounter{page}{2}":
                 self.errors.append(
-                    "Ошибка: между \\includepdf и \\tableofcontents допускаются только комментарии или \\setcounter{page}{2}.")
+                    "Между \\includepdf и \\tableofcontents допускаются только комментарии или \\setcounter{page}{2}.")
 
     def parse_addcontentsline(self):
         chapter_star_pattern = re.finditer(r"\\chapter\*\{(.+?)\}", self.tex_content)
@@ -119,7 +119,7 @@ class LatexParser:
             add_match = re.search(addcontents_pattern, following_text)
             if not add_match or add_match.start() > 100:
                 self.errors.append(
-                    f"Ошибка: после \\chapter*{{{match.group(1)}}} отсутствует соответствующая команда \\addcontentsline."
+                    f"После \\chapter*{{{match.group(1)}}} отсутствует соответствующая команда \\addcontentsline."
                 )
 
     def parse_introduction(self):
@@ -313,7 +313,7 @@ class LatexParser:
                     continue
 
                 context = self.tex_content[max(0, pos - 40):pos + 40].replace('\n', ' ')
-                self.errors.append(f"Ошибка: использование команды для '{desc}' {error_scope}: ...{context}...")
+                self.errors.append(f"Запрещено использовать команды для '{desc}' {error_scope} --> '...{context}...'")
 
     def parse_appendices(self) -> Dict[str, List[Dict[str, str]]]:
         text = self.tex_content
