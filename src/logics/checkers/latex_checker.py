@@ -36,7 +36,8 @@ class LatexChecker:
         self.check_appendices()
         self.check_bibliography()
 
-        return {"valid": not bool(self.errors), "found": self.short_parsed_document(self.parsed_document),
+        return {"valid": not bool(self.errors),
+                "found": self.short_parsed_document(self.parsed_document),
                 "errors": self.errors}
 
     def check_structure(self):
@@ -91,7 +92,7 @@ class LatexChecker:
             with open(reference_sty_path, "r", encoding="utf-8") as ref_file:
                 reference_lines = ref_file.readlines()
         except FileNotFoundError:
-            self.add_error("Файл settings.sty не найден в папке docs.")
+            #self.add_error("Файл settings.sty не найден в папке docs.")
             return
 
         uploaded_lines = self.sty_content
@@ -164,20 +165,20 @@ class LatexChecker:
             if intro_end == ":":
                 if not item[0].islower():
                     self.add_error(
-                        f"Пункт должен начинаться с маленькой буквы (т.к. вводная часть заканчивается на ':') --> '{item_preview}'")
+                        f"Пункт списка должен начинаться с маленькой буквы (т.к. вводная часть заканчивается на ':') --> '{item_preview}'")
                 if i < len(items) - 1 and not item.endswith(";"):
                     self.add_error(
-                        f"Промежуточный пункт должен оканчиваться на ';' --> '{item_preview}'")
+                        f"Промежуточный пункт списка должен оканчиваться на ';' --> '{item_preview}'")
                 if i == len(items) - 1 and not item.endswith("."):
                     self.add_error(
-                        f"Последний пункт должен оканчиваться на '.' --> '{item_preview}'")
+                        f"Последний пункт списка должен оканчиваться на '.' --> '{item_preview}'")
             elif intro_end == ".":
                 if not item[0].isupper():
                     self.add_error(
-                        f"Пункт должен начинаться с большой буквы (т.к. вводная часть заканчивается на '.') --> '{item_preview}'")
+                        f"Пункт списка должен начинаться с большой буквы (т.к. вводная часть заканчивается на '.') --> '{item_preview}'")
                 if not item.endswith("."):
                     self.add_error(
-                        f"Каждый пункт должен заканчиваться на '.' --> '{item_preview}'")
+                        f"Каждый пункт списка должен заканчиваться на '.' --> '{item_preview}'")
             else:
                 self.add_error(
                     f"Вводная часть перед списком должна заканчиваться ':' или '.' --> '{self.short(intro)}'")
@@ -261,7 +262,7 @@ class LatexChecker:
                     self.add_error(f"Ссылка на рисунок \\ref{{{ref}}} находится после самого рисунка")
                 elif label_pos - ref_pos > 1800:
                     self.add_error(
-                        f"Слишком большое расстояние между ссылкой \\ref{{{ref}}} и таблицей. Убедитесь, что таблица расположена на той же или следующей странице")
+                        f"Слишком большое расстояние между ссылкой \\ref{{{ref}}} и рисунком. Убедитесь, что рисунок расположен на той же или следующей странице")
 
     def check_tables(self):
         for table_type in ["tables", "longtables"]:
@@ -334,30 +335,16 @@ class LatexChecker:
         # Приложения
         if "appendices" in parsed_document:
             appendices = parsed_document["appendices"]
-            short_titles = []
-            for app in appendices.get("appendix_titles", []):
-                short_titles.append({
-                    "letter": app["letter"],
-                    "title": truncate(app["title"]),
-                    "full_title": truncate(app["full_title"]),
-                    "pdf_included": app["pdf_included"]
-                })
             result["appendices"] = {
-                "appendix_links": appendices.get("appendix_links", []),
-                "appendix_titles": short_titles
+                "refs": [item.get("raw_text", "") for item in appendices.get("appendix_links", [])],
+                "titles": [truncate(item.get("full_title", "")) for item in appendices.get("appendix_titles", [])]
             }
 
         # Библиография
         if "bibliography" in parsed_document:
             bib = parsed_document["bibliography"]
-            short_bib_items = []
-            for item in bib.get("bibliography_items", []):
-                short_bib_items.append({
-                    "key": item["key"],
-                    "text": truncate(item["text"])
-                })
             result["bibliography"] = {
-                "bibliography_items": short_bib_items,
+                "bibliography_items": [item.get("key", "") for item in bib.get("bibliography_items", [])],
                 "cite_keys": bib.get("cite_keys", [])
             }
 
@@ -365,11 +352,11 @@ class LatexChecker:
         if "structure" in parsed_document:
             struct = parsed_document["structure"]
             short_numbered_sections = {
-                chapter: [truncate(s) for s in sections]
+                chapter: [truncate(s, 15) for s in sections]
                 for chapter, sections in struct.get("numbered_sections", {}).items()
             }
             short_unnumbered_sections = {
-                chapter: [truncate(s) for s in sections]
+                chapter: [truncate(s, 15) for s in sections]
                 for chapter, sections in struct.get("unnumbered_sections", {}).items()
             }
             result["structure"] = {
