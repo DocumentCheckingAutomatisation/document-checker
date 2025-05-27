@@ -220,6 +220,8 @@ POST /api/rules/update/all
 
 **POST** `/api/documents/validate/latex`
 
+Этот эндпоинт предназначен для проверки LaTeX-документов. Он ожидает .tex файл (основной текст документа) и .sty файл (стиль оформления), соответствующий шаблону оформления студенческих работ ИГУ.
+
 ##### Параметры:
 - tex_file — .tex файл (тип: file)
 - sty_file — .sty файл (тип: file)
@@ -231,10 +233,11 @@ POST /api/rules/update/all
 - doc_type: diploma
 
 ##### Пример ответа:
+Итоговая оценка, найденные элементы и обнаруженные ошибки оформления
 ```json
 {
   "valid": true,
-  "found": [...],
+  "found": [],
   "errors": []
 }
 ```
@@ -251,10 +254,11 @@ POST /api/rules/update/all
 - doc_type: practice_report
 
 ##### Пример ответа:
+Итоговая оценка, найденные элементы и обнаруженные ошибки оформления
 ```json
 {
   "valid": true,
-  "found": [...],
+  "found": [],
   "errors": []
 }
 ```
