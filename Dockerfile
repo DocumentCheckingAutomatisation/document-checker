@@ -5,6 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN pip install --no-cache-dir python-docx==1.1.2
+
 COPY . .
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
