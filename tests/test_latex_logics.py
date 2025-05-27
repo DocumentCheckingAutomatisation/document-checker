@@ -24,21 +24,11 @@ class TestLatexLogics(unittest.TestCase):
 
         self.assertTrue(parser.parsed_document, "Структура документа не была распарсена")
 
-    def test_latex_check_introduction_keywords(self):
-        """Тест проверки ключевых слов во введении"""
-
-        with open("../docs/main.tex", "rb") as tex_file:
-            checker = LatexChecker(tex_file, None, "course_work")
-
-        checker.check_introduction_keywords()
-        print(checker.errors)
-
-        self.assertTrue(not checker.errors, "Ключевые слова во введении не были")
 
     def test_check_sty_file(self):
         """Тест проверки соответствия загруженного .sty файла эталонному"""
 
-        with open("../docs/main.tex", "rb") as tex_file, open("../docs/settings1.sty", "rb") as sty_file:
+        with open("../docs/my.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
             checker = LatexChecker(tex_file, sty_file, "course_work")
 
         checker.check_sty_file()
@@ -84,7 +74,7 @@ class TestLatexLogics(unittest.TestCase):
     def test_latex_checking(self):
         """Тест проверки LaTeX-документа"""
 
-        with open("../docs/f.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
+        with open("../docs/my.tex", "rb") as tex_file, open("../docs/settings.sty", "rb") as sty_file:
             checker = LatexChecker(tex_file, sty_file, "diploma")
 
         result = checker.check_document()

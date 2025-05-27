@@ -2,19 +2,20 @@ from enum import Enum
 
 
 class RuleType(Enum):
-    """Типы правил"""
+    """Типы ошибок"""
 
     COMMON = 1
     STRUCTURE = 2
-    CHAPTER_HEADING = 3
-    SECTION_HEADING = 4
-    SUBSECTION_HEADING = 5
+    INTRO_KEYWORDS = 3
+    CHAPTER = 4
+    SECTION = 5
     PICTURE = 6
     TABLE = 7
     LIST = 8
     FORMULA = 9
-    CITATIONS = 10
-    QUOTES = 11
+    BIBLIOGRAPHY = 10
+    APPLICATION = 11
+    QUOTES = 12
 
 
 
