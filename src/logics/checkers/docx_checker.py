@@ -68,11 +68,17 @@ class DocxChecker:
                 if not any(sect_lower in s for s in chapter_sections):
                     self.add_error(f"В главе {chapter_num} не найден обязательный раздел: '{sect}'. Убедитесь, что он есть.")
 
-        self.errors.remove("Не найдена обязательная глава: 'титульный лист'")
-        self.errors.remove("В главе 1 не найден обязательный раздел: '1.1 раздел'")
-        self.errors.remove("В главе 1 не найден обязательный раздел: '1.2 раздел'")
-        self.errors.remove("В главе 2 не найден обязательный раздел: '2.1 раздел'")
-        self.errors.remove("В главе 2 не найден обязательный раздел: '2.2 раздел'")
+        suppress_errors = [
+            "Не найдена обязательная глава: 'титульный лист'",
+            "В главе 1 не найден обязательный раздел: '1.1 раздел'",
+            "В главе 1 не найден обязательный раздел: '1.2 раздел'",
+            "В главе 2 не найден обязательный раздел: '2.1 раздел'",
+            "В главе 2 не найден обязательный раздел: '2.2 раздел'"
+        ]
+
+        for err in suppress_errors:
+            if err in self.errors:
+                self.errors.remove(err)
 
     def check_intro_keywords(self) -> None:
         introduction_keywords = self.rules["structure_rules"].get("introduction_keywords", [])
