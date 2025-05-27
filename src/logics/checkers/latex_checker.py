@@ -117,6 +117,7 @@ class LatexChecker:
                 self.add_error(
                     f"Несовпадение в settings.sty: ожидалось '{ref_line.strip()}', получено '{uploaded_line.strip()}'"
                 )
+                break
 
         if len(uploaded_lines) < len(reference_lines):
             self.add_error(
